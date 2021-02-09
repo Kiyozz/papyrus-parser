@@ -291,7 +291,7 @@ func (p *Parser) checkWhile() error {
 
 func (p Parser) checkProperty() error {
     split := strings.Split(strings.Trim(p.Content, "\n "), "\n")
-    reg := regexp.MustCompile(`^([\w\d]+)\s+Property(\s+([\w\d]+)?\s*(=\s*([\w\d]+))?\s*((\w+)?\s*(\w+)?$)?)?`)
+    reg := regexp.MustCompile(`^([\w\d]+(\[])?)\s+Property(\s+([\w\d]+)?\s*(=\s*([\w\d]+))?\s*((\w+)?\s*(\w+)?$)?)?`)
 
     for i, lineContent := range split {
         if lineContent == "" && strings.HasPrefix(lineContent, ";") {
@@ -305,10 +305,10 @@ func (p Parser) checkProperty() error {
         }
 
         propType := match[1]      // variable type
-        propName := match[3]      // variable name
-        defaultValue := match[5]  // = XX
-        propFlag := match[7]      // Auto/AutoReadOnly
-        propExtraFlag := match[8] // Hidden/Conditional
+        propName := match[4]      // variable name
+        defaultValue := match[6]  // = XX
+        propFlag := match[8]      // Auto/AutoReadOnly
+        propExtraFlag := match[9] // Hidden/Conditional
 
         parseError := ParseError{
             Line: i + 1,
