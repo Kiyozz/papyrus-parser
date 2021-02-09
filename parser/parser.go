@@ -1,338 +1,359 @@
 package parser
 
 import (
-	"fmt"
-	"io/ioutil"
-	"os"
-	"regexp"
-	"strings"
+    "fmt"
+    "io/ioutil"
+    "os"
+    "regexp"
+    "strings"
 )
 
 var mapFuncs = []mapTrimFuncs{{
-	Trim:  strings.TrimLeft,
-	Index: strings.Index,
+    Trim:  strings.TrimLeft,
+    Index: strings.Index,
 }, {
-	Trim:  strings.TrimRight,
-	Index: strings.LastIndex,
+    Trim:  strings.TrimRight,
+    Index: strings.LastIndex,
 }}
 
 var statementIf = &Statement{
-	Start: "if",
-	End:   "endif",
+    Start: "if",
+    End:   "endif",
 }
 
 var statementWhile = &Statement{
-	Start: "while",
-	End:   "endwhile",
+    Start: "while",
+    End:   "endwhile",
 }
 
 var statementFunction = &Statement{
-	Start: "Function",
-	End:   "EndFunction",
+    Start: "Function",
+    End:   "EndFunction",
 }
 
 var statementEvent = &Statement{
-	Start: "Event",
-	End:   "EndEvent",
+    Start: "Event",
+    End:   "EndEvent",
 }
 
 type Parser struct {
-	File       string
-	Filename   string
-	Content    string
-	Extends    string
-	ScriptName string
+    File       string
+    Filename   string
+    Content    string
+    Extends    string
+    ScriptName string
 }
 
 type Statement struct {
-	Start string
-	End   string
+    Start string
+    End   string
 }
 
 type StatementBlock struct {
-	Statement
+    Statement
 }
 
 func New(file string) (*Parser, error) {
-	reg := regexp.MustCompile(`/(.*\.psc)`)
-	s := reg.FindStringSubmatch(file)
+    reg := regexp.MustCompile(`/(.*\.psc)`)
+    s := reg.FindStringSubmatch(file)
 
-	if len(s) == 1 {
-		fmt.Print("cannot find Filename in " + file)
+    if len(s) == 1 {
+        fmt.Print("cannot find Filename in " + file)
 
-		return nil, FilenameError{file: file}
-	}
+        return nil, FilenameError{file: file}
+    }
 
-	wd, err := os.Getwd()
+    wd, err := os.Getwd()
 
-	if err != nil {
-		return nil, RuntimeError{message: "cannot get current directory"}
-	}
+    if err != nil {
+        return nil, RuntimeError{message: "cannot get current directory"}
+    }
 
-	contentByte, err := ioutil.ReadFile(wd + "/" + file)
+    contentByte, err := ioutil.ReadFile(wd + "/" + file)
 
-	if err != nil {
-		return nil, RuntimeError{message: "cannot find File " + err.Error()}
-	}
+    if err != nil {
+        return nil, RuntimeError{message: "cannot find File " + err.Error()}
+    }
 
-	content := string(contentByte)
-	scriptName := strings.Replace(s[1], ".psc", "", 1)
+    content := string(contentByte)
+    scriptName := strings.Replace(s[1], ".psc", "", 1)
 
-	return &Parser{
-		File:       file,
-		Filename:   s[1],
-		Content:    content,
-		ScriptName: scriptName,
-	}, nil
+    return &Parser{
+        File:       file,
+        Filename:   s[1],
+        Content:    content,
+        ScriptName: scriptName,
+    }, nil
 }
 
 func (p *Parser) Parse() error {
-	err := p.checkScriptName()
-	checks := []func() error{p.checkTrailingWhitespaces, p.checkFunctions, p.checkIf, p.checkWhile}
+    err := p.checkScriptName()
+    checks := []func() error{p.checkTrailingWhitespaces, p.checkFunctions, p.checkIf, p.checkWhile}
 
-	for _, check := range checks {
-		err = check()
+    for _, check := range checks {
+        err = check()
 
-		if err != nil {
-			return err
-		}
-	}
+        if err != nil {
+            return err
+        }
+    }
 
-	return nil
+    return nil
 }
 
 func (p *Parser) checkTrailingWhitespaces() error {
-	for i, line := range strings.Split(p.Content, "\n") {
-		trimmedLine := strings.Trim(line, " ")
+    for i, line := range strings.Split(p.Content, "\n") {
+        trimmedLine := strings.Trim(line, " ")
 
-		if trimmedLine != "" && !strings.HasPrefix(trimmedLine, "Function") && !strings.HasPrefix(trimmedLine, "Event") && !strings.HasPrefix(trimmedLine, "Scriptname") {
-			continue
-		}
+        if trimmedLine != "" && !strings.HasPrefix(trimmedLine, "Function") && !strings.HasPrefix(trimmedLine, "Event") && !strings.HasPrefix(trimmedLine, "Scriptname") {
+            continue
+        }
 
-		for _, useFunc := range mapFuncs {
-			if useFunc.Trim(line, " ") != line {
-				col := useFunc.Index(line, " ")
+        for _, useFunc := range mapFuncs {
+            if useFunc.Trim(line, " ") != line {
+                col := useFunc.Index(line, " ")
 
-				return ParseError{
-					Line:    i + 1,
-					Col:     col + 1,
-					File:    p.Filename,
-					Message: "trailing whitespace",
-				}
-			}
-		}
-	}
+                return ParseError{
+                    Line:    i + 1,
+                    Col:     col + 1,
+                    File:    p.Filename,
+                    Message: "trailing whitespace",
+                }
+            }
+        }
+    }
 
-	return nil
+    return nil
 }
 
 func (p *Parser) checkScriptName() error {
-	scriptNameLine := strings.Trim(strings.Split(p.Content, "\n")[0], "\n ")
+    scriptNameLine := strings.Trim(strings.Split(p.Content, "\n")[0], "\n ")
 
-	reg := regexp.MustCompile(fmt.Sprintf(`Scriptname %s([^a-z]|\s*$)(extends?\s*(\w*))?`, p.ScriptName))
+    reg := regexp.MustCompile(fmt.Sprintf(`Scriptname %s([^a-z]|\s*$)(extends?\s*(\w*))?`, p.ScriptName))
 
-	match := reg.FindStringSubmatch(scriptNameLine)
+    match := reg.FindStringSubmatch(scriptNameLine)
 
-	if len(match) != 4 {
-		scriptNameIndex := strings.Index(scriptNameLine, p.ScriptName)
+    if len(match) != 4 {
+        scriptNameIndex := strings.Index(scriptNameLine, p.ScriptName)
 
-		if scriptNameIndex < 0 {
-			scriptNameIndex = 0
-		}
+        if scriptNameIndex < 0 {
+            scriptNameIndex = 0
+        }
 
-		return ParseError{
-			Line:    1,
-			Col:     scriptNameIndex + 1,
-			File:    p.Filename,
-			Message: fmt.Sprintf(`Scriptname statement is invalid, "Scriptname" must match Filename: "Scriptname %s"`, p.ScriptName),
-		}
-	}
+        return ParseError{
+            Line:    1,
+            Col:     scriptNameIndex + 1,
+            File:    p.Filename,
+            Message: fmt.Sprintf(`Scriptname statement is invalid, "Scriptname" must match Filename: "Scriptname %s"`, p.ScriptName),
+        }
+    }
 
-	p.Extends = match[2]
+    p.Extends = match[2]
 
-	return nil
+    return nil
 }
 
 func (p *Parser) checkStatement(statement *Statement) error {
-	split := strings.Split(strings.Trim(p.Content, "\n "), "\n")
-	splitLen := len(split)
-	reg := regexp.MustCompile(fmt.Sprintf(`%s(\s\w+|\s*\(\w+)`, statement.Start))
-	regCheckParentheses := regexp.MustCompile(fmt.Sprintf(`%s\s*(\([\w\d]+\)?|\(?[\w\d]*\))`, statement.Start))
+    split := strings.Split(strings.Trim(p.Content, "\n "), "\n")
+    splitLen := len(split)
+    reg := regexp.MustCompile(fmt.Sprintf(`%s(\s\w+|\s*\(\w+)`, statement.Start))
+    regCheckParentheses := regexp.MustCompile(fmt.Sprintf(`%s\s*(\([\w\d]+\)?|\(?[\w\d]*\))`, statement.Start))
 
-	for i, lineContent := range split {
-		if len(lineContent) == 0 || strings.HasPrefix(lineContent, ";") || strings.HasPrefix(lineContent, ";/") {
-			continue
-		}
+    for i, lineContent := range split {
+        if len(lineContent) == 0 || strings.HasPrefix(lineContent, ";") || strings.HasPrefix(lineContent, ";/") {
+            continue
+        }
 
-		startMatch := reg.FindStringSubmatch(lineContent)
+        startMatch := reg.FindStringSubmatch(lineContent)
 
-		if startMatch == nil {
-			continue
-		}
+        if startMatch == nil {
+            continue
+        }
 
-		checkParentheses := regCheckParentheses.FindStringSubmatch(lineContent)
+        checkParentheses := regCheckParentheses.FindStringSubmatch(lineContent)
 
-		if checkParentheses != nil && (!strings.HasPrefix(checkParentheses[1], "(") || !strings.HasSuffix(checkParentheses[1], ")")) {
-			return ParseError{
-				Line:    i + 1,
-				Col:     len(lineContent),
-				File:    p.Filename,
-				Message: fmt.Sprintf("invalid %s syntax", statement.Start),
-			}
-		}
+        if checkParentheses != nil && (!strings.HasPrefix(checkParentheses[1], "(") || !strings.HasSuffix(checkParentheses[1], ")")) {
+            return ParseError{
+                Line:    i + 1,
+                Col:     len(lineContent),
+                File:    p.Filename,
+                Message: fmt.Sprintf("invalid %s syntax", statement.Start),
+            }
+        }
 
-		hasEnd := true
+        hasEnd := true
 
-		for j := i + 1; j < splitLen; j++ {
-			jLineContent := split[j]
-			hasEnd = strings.Contains(jLineContent, statement.End)
+        for j := i + 1; j < splitLen; j++ {
+            jLineContent := split[j]
+            hasEnd = strings.Contains(jLineContent, statement.End)
 
-			if hasEnd {
-				break
-			}
-		}
+            if hasEnd {
+                break
+            }
+        }
 
-		if !hasEnd {
-			return ParseError{
-				Line:    i + 1,
-				Col:     1,
-				File:    p.Filename,
-				Message: fmt.Sprintf("%s is not closed (missing %s)", statement.Start, statement.End),
-			}
-		}
-	}
+        if !hasEnd {
+            return ParseError{
+                Line:    i + 1,
+                Col:     1,
+                File:    p.Filename,
+                Message: fmt.Sprintf("%s is not closed (missing %s)", statement.Start, statement.End),
+            }
+        }
+    }
 
-	return nil
+    return nil
 }
 
 func (p *Parser) checkBlock(statement *Statement, createErrorMessage func(returnType string, name string) string) error {
-	split := strings.Split(strings.Trim(p.Content, "\n "), "\n")
-	splitLen := len(split)
-	regStart := regexp.MustCompile(fmt.Sprintf(`(\w*)\s*%s\s(\w+)\(?`, statement.Start))
-	regCheckParentheses := regexp.MustCompile(fmt.Sprintf(`%s\s+\w+(\(?([\w\d]*,?\s?[\w\d]*)*\)?)`, statement.Start))
+    split := strings.Split(strings.Trim(p.Content, "\n "), "\n")
+    splitLen := len(split)
+    regStart := regexp.MustCompile(fmt.Sprintf(`(\w*)\s*%s\s(\w+)\(?`, statement.Start))
+    regCheckParentheses := regexp.MustCompile(fmt.Sprintf(`%s\s+\w+(\(?([\w\d]*,?\s?[\w\d]*)*\)?)`, statement.Start))
 
-	for i, lineContent := range split {
-		if lineContent == "" && strings.HasPrefix(lineContent, ";") {
-			continue
-		}
+    for i, lineContent := range split {
+        if lineContent == "" && strings.HasPrefix(lineContent, ";") {
+            continue
+        }
 
-		startMatch := regStart.FindStringSubmatch(lineContent)
+        startMatch := regStart.FindStringSubmatch(lineContent)
 
-		if startMatch == nil {
-			continue
-		}
+        if startMatch == nil {
+            continue
+        }
 
-		checkParentheses := regCheckParentheses.FindStringSubmatch(lineContent)
+        checkParentheses := regCheckParentheses.FindStringSubmatch(lineContent)
 
-		if checkParentheses != nil && (!strings.HasPrefix(checkParentheses[1], "(") || !strings.HasSuffix(checkParentheses[1], ")")) {
-			return ParseError{
-				Line:    i + 1,
-				Col:     len(lineContent),
-				File:    p.Filename,
-				Message: fmt.Sprintf("invalid %s syntax", statement.Start),
-			}
-		}
+        if checkParentheses != nil && (!strings.HasPrefix(checkParentheses[1], "(") || !strings.HasSuffix(checkParentheses[1], ")")) {
+            return ParseError{
+                Line:    i + 1,
+                Col:     len(lineContent),
+                File:    p.Filename,
+                Message: fmt.Sprintf("invalid %s syntax", statement.Start),
+            }
+        }
 
-		returnType := startMatch[1]
-		functionName := startMatch[2]
+        returnType := startMatch[1]
+        functionName := startMatch[2]
 
-		if returnType == "" {
-			returnType = "None"
-		}
+        if returnType == "" {
+            returnType = "None"
+        }
 
-		hasEnd := true
+        hasEnd := true
 
-		for j := i + 1; j < splitLen; j++ {
-			jLineContent := split[j]
-			hasEnd = strings.Contains(jLineContent, statement.End)
+        for j := i + 1; j < splitLen; j++ {
+            jLineContent := split[j]
+            hasEnd = strings.Contains(jLineContent, statement.End)
 
-			if hasEnd {
-				break
-			}
-		}
+            if hasEnd {
+                break
+            }
+        }
 
-		if !hasEnd {
+        if !hasEnd {
 
-			return ParseError{
-				Line:    i + 1,
-				Col:     1,
-				File:    p.Filename,
-				Message: fmt.Sprintf("%s%s is not closed", createErrorMessage(returnType, functionName), statement.Start),
-			}
-		}
-	}
+            return ParseError{
+                Line:    i + 1,
+                Col:     1,
+                File:    p.Filename,
+                Message: fmt.Sprintf("%s%s is not closed", createErrorMessage(returnType, functionName), statement.Start),
+            }
+        }
+    }
 
-	return nil
+    return nil
 }
 
 func (p *Parser) checkFunctions() error {
-	return p.checkBlock(statementFunction, func(returnType string, name string) string {
-		if returnType == "" {
-			returnType = "None"
-		}
+    return p.checkBlock(statementFunction, func(returnType string, name string) string {
+        if returnType == "" {
+            returnType = "None"
+        }
 
-		return fmt.Sprintf(" %s %s", returnType, name)
-	})
+        return fmt.Sprintf(" %s %s", returnType, name)
+    })
 }
 
 func (p *Parser) checkEvents() error {
-	return p.checkBlock(statementEvent, func(_ string, name string) string {
-		return fmt.Sprintf(" %s", name)
-	})
+    return p.checkBlock(statementEvent, func(_ string, name string) string {
+        return fmt.Sprintf(" %s", name)
+    })
 }
 
 func (p *Parser) checkIf() error {
-	return p.checkStatement(statementIf)
+    return p.checkStatement(statementIf)
 }
 
 func (p *Parser) checkWhile() error {
-	return p.checkStatement(statementWhile)
+    return p.checkStatement(statementWhile)
 }
 
 func (p Parser) checkProperty() error {
-	split := strings.Split(strings.Trim(p.Content, "\n "), "\n")
-	reg := regexp.MustCompile(`^([\w\d]+)\s+Property(\s+([\w\d]+)\s+(=\s*([\w\d]+))?\s*(Auto$|AutoReadOnly$)?)?`)
+    split := strings.Split(strings.Trim(p.Content, "\n "), "\n")
+    reg := regexp.MustCompile(`^([\w\d]+)\s+Property(\s+([\w\d]+)?\s*(=\s*([\w\d]+))?\s*((\w+)?\s*(\w+)?$)?)?`)
 
-	for i, lineContent := range split {
-		if lineContent == "" && strings.HasPrefix(lineContent, ";") {
-			continue
-		}
+    for i, lineContent := range split {
+        if lineContent == "" && strings.HasPrefix(lineContent, ";") {
+            continue
+        }
 
-		match := reg.FindStringSubmatch(lineContent)
+        match := reg.FindStringSubmatch(lineContent)
 
-		if match == nil {
-			continue
-		}
+        if match == nil {
+            continue
+        }
 
-		propType := match[1]
-		propName := match[3]
-		defaultValue := match[4]
-		propGetterSetter := match[6]
+        propType := match[1]      // variable type
+        propName := match[3]      // variable name
+        defaultValue := match[5]  // = XX
+        propFlag := match[7]      // Auto/AutoReadOnly
+        propExtraFlag := match[8] // Hidden/Conditional
 
-		parseError := ParseError{
-			Line: i + 1,
-			Col:  len(lineContent),
-			File: p.Filename,
-		}
+        parseError := ParseError{
+            Line: i + 1,
+            Col:  len(lineContent),
+            File: p.Filename,
+        }
 
-		if propName == "" {
-			parseError.Message = "property missing name"
+        if propName == "" {
+            parseError.Message = fmt.Sprintf("%s property error: missing name", propType)
 
-			return parseError
-		}
+            return parseError
+        }
 
-		if propGetterSetter == "" {
-			parseError.Message = fmt.Sprintf("property %s %s missing getter/setter", propType, propName)
+        if propFlag == "" {
+            parseError.Message = fmt.Sprintf("%s %s property error: missing flag", propType, propName)
 
-			return parseError
-		}
+            return parseError
+        } else {
+            if propFlag != "AutoReadOnly" && propFlag != "Auto" {
+                parseError.Message = fmt.Sprintf("%s %s property error: unknown flag %s", propType, propName, propFlag)
 
-		if propGetterSetter == "AutoReadOnly" && defaultValue == "" {
-			parseError.Message = fmt.Sprintf("property %s %s AutoReadOnly missing default value", propType, propName)
+                return parseError
+            }
 
-			return parseError
-		}
-	}
+            if propFlag == "AutoReadOnly" && defaultValue == "" {
+                parseError.Message = fmt.Sprintf("%s %s property error: an AutoReadOnly property must have a default value", propType, propName)
 
-	return nil
+                return parseError
+            }
+        }
+
+        if propExtraFlag != "" {
+            if propExtraFlag != "Conditional" && propExtraFlag != "Hidden" {
+                parseError.Message = fmt.Sprintf("%s %s property error: unknown flag %s", propType, propName, propExtraFlag)
+
+                return parseError
+            }
+
+            if propFlag != "Auto" && propExtraFlag == "Conditional" {
+                parseError.Message = fmt.Sprintf("%s %s property error: Conditional is only applicable on property flagged Auto", propType, propName)
+
+                return parseError
+            }
+        }
+    }
+
+    return nil
 }

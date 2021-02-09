@@ -9,14 +9,14 @@ type RuntimeError struct {
 }
 
 type ParseError struct {
-    Line int
-    Col int
-    File string
+    Line    int
+    Col     int
+    File    string
     Message string
 }
 
 type mapTrimFuncs struct {
-    Trim func(_ string, _ string) string
+    Trim  func(_ string, _ string) string
     Index func(_ string, _ string) int
 }
 
