@@ -41,6 +41,7 @@ type Parser struct {
     Filename   string
     Content    string
     Extends    string
+    Flag       string
     ScriptName string
 }
 
@@ -88,6 +89,11 @@ func New(file string) (*Parser, error) {
 
 func (p *Parser) Parse() error {
     err := p.checkScriptName()
+
+    if err != nil {
+        return err
+    }
+
     checks := []func() error{p.checkTrailingWhitespaces, p.checkFunctions, p.checkIf, p.checkWhile}
 
     for _, check := range checks {
@@ -129,26 +135,60 @@ func (p *Parser) checkTrailingWhitespaces() error {
 func (p *Parser) checkScriptName() error {
     scriptNameLine := strings.Trim(strings.Split(p.Content, "\n")[0], "\n ")
 
-    reg := regexp.MustCompile(fmt.Sprintf(`Scriptname %s([^a-z]|\s*$)(extends?\s*(\w*))?`, p.ScriptName))
+    reg := regexp.MustCompile(`(Scriptname)(\s)?([\w\d]+)?(\s*)(extends)?(\s*)([\w\d]+)?(\s*)([\w\d]+)?`)
 
     match := reg.FindStringSubmatch(scriptNameLine)
 
-    if len(match) != 4 {
-        scriptNameIndex := strings.Index(scriptNameLine, p.ScriptName)
-
-        if scriptNameIndex < 0 {
-            scriptNameIndex = 0
-        }
-
-        return ParseError{
-            Line:    1,
-            Col:     scriptNameIndex + 1,
-            File:    p.Filename,
-            Message: fmt.Sprintf(`Scriptname statement is invalid, "Scriptname" must match Filename: "Scriptname %s"`, p.ScriptName),
-        }
+    parseError := ParseError{
+        Line: 1,
+        Col:  1,
+        File: p.Filename,
     }
 
-    p.Extends = match[2]
+    if match == nil {
+        parseError.Message = "Scriptname error: no Scriptname specified"
+
+        return parseError
+    }
+
+    scriptName := match[1]
+    spaceBetweenScriptNameAndName := match[2]
+    scriptNameValue := match[3]
+    spaceBeforeExtends := match[4]
+    extends := match[5]
+    spaceAfterExtends := match[6]
+    extendedScript := match[7]
+    spaceAfterExtended := match[8]
+    scriptNameFlag := match[9]
+
+    if spaceBetweenScriptNameAndName == "" {
+        parseError.Col = len(scriptName)
+        parseError.Message = "Scriptname error: missing space after Scriptname"
+
+        return parseError
+    }
+
+    if scriptNameValue != p.ScriptName {
+        parseError.Col = len(fmt.Sprintf("%s ", scriptName))
+
+        if scriptNameValue == "" {
+            parseError.Message = "Scriptname error: missing name"
+        } else {
+            parseError.Message = fmt.Sprintf("Scriptname error: Scriptname must match filename, %s expected, got %s", p.ScriptName, scriptNameValue)
+        }
+
+        return parseError
+    }
+
+    if scriptNameFlag != "" && scriptNameFlag != "Conditional" && scriptNameFlag != "Hidden" {
+        parseError.Col = len(fmt.Sprintf("%s %s%s%s%s%s%s", scriptName, scriptNameValue, spaceBeforeExtends, extends, spaceAfterExtends, extendedScript, spaceAfterExtended))
+        parseError.Message = fmt.Sprintf("Scriptname error: unknown flag %s", scriptNameFlag)
+
+        return parseError
+    }
+
+    p.Extends = extendedScript
+    p.Flag = scriptNameFlag
 
     return nil
 }
@@ -205,7 +245,7 @@ func (p *Parser) checkStatement(statement *Statement) error {
     return nil
 }
 
-func (p *Parser) checkBlock(statement *Statement, createErrorMessage func(returnType string, name string) string) error {
+func (p *Parser) checkBlock(statement *Statement) error {
     split := strings.Split(strings.Trim(p.Content, "\n "), "\n")
     splitLen := len(split)
     regStart := regexp.MustCompile(fmt.Sprintf(`(([\w\d]+)?(\[])?)?\s*%s(\s*)?([\d\w]+)?(\()?([^)]+)?(\))?`, statement.Start))
@@ -230,9 +270,9 @@ func (p *Parser) checkBlock(statement *Statement, createErrorMessage func(return
         closeParenthesis := startMatch[8]
 
         parseError := ParseError{
-            Line:    i + 1,
-            Col:     1,
-            File:    p.Filename,
+            Line: i + 1,
+            Col:  1,
+            File: p.Filename,
         }
 
         if name == "" {
@@ -281,19 +321,11 @@ func (p *Parser) checkBlock(statement *Statement, createErrorMessage func(return
 }
 
 func (p *Parser) checkFunctions() error {
-    return p.checkBlock(statementFunction, func(returnType string, name string) string {
-        if returnType == "" {
-            returnType = "None"
-        }
-
-        return fmt.Sprintf(" %s %s", returnType, name)
-    })
+    return p.checkBlock(statementFunction)
 }
 
 func (p *Parser) checkEvents() error {
-    return p.checkBlock(statementEvent, func(_ string, name string) string {
-        return fmt.Sprintf(" %s", name)
-    })
+    return p.checkBlock(statementEvent)
 }
 
 func (p *Parser) checkIf() error {
@@ -327,7 +359,7 @@ func (p Parser) checkProperty() error {
 
         parseError := ParseError{
             Line: i + 1,
-            Col:  len(lineContent),
+            Col:  len(lineContent), // FIXME: not the same everywhere
             File: p.Filename,
         }
 

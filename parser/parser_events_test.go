@@ -1,8 +1,11 @@
 package parser
 
-import "testing"
+import (
+    "strings"
+    "testing"
+)
 
-func TestCheckEventsArgOk(t *testing.T) {
+func TestMultipleEventsWithOneArgOk(t *testing.T) {
     parser := setup(`Event OnUpdate()
 
 EndEvent
@@ -18,7 +21,7 @@ EndEvent`)
     }
 }
 
-func TestCheckEventsArgsOk(t *testing.T) {
+func TestMultipleEventsWithArgsOk(t *testing.T) {
     parser := setup(`Event OnUpdate()
 
 EndEvent
@@ -34,7 +37,7 @@ EndEvent`)
     }
 }
 
-func TestCheckEventsArgsMissingEndNonOk(t *testing.T) {
+func TestEventsMultipleEventsNotClosedNonOk(t *testing.T) {
     parser := setup(`Event OnUpdate()
 
 EndEve
@@ -47,10 +50,16 @@ EndEven`)
 
     if err == nil {
         t.Error("wanted: parse error event test, got: ok")
+    } else {
+        wantedErr := "OnUpdate Event error: Event is not closed"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
     }
 }
 
-func TestCheckEventsArgsMissingParenthesesNonOk(t *testing.T) {
+func TestEventsMultipleEventsParenthesisNotOpenedNonOk(t *testing.T) {
     parser := setup(`Event OnUpdate()
 
 EndEvent
@@ -63,10 +72,16 @@ EndEvent`)
 
     if err == nil {
         t.Error("wanted: parse error event test, got: ok")
+    } else {
+        wantedErr := "OnCustomEventstring Event error: missing open parenthesis"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
     }
 }
 
-func TestCheckEventsArgsMissingParenthesesEndNonOk(t *testing.T) {
+func TestEventsMultipleEventsParenthesisNotClosedNonOk(t *testing.T) {
     parser := setup(`Event OnUpdate()
 
 EndEvent
@@ -79,5 +94,47 @@ EndEvent`)
 
     if err == nil {
         t.Error("wanted: parse error event test, got: ok")
+    } else {
+        wantedErr := "OnCustomEvent Event error: missing close parenthesis"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestEventsMissingNameNonOk(t *testing.T) {
+    parser := setup(`Event
+
+EndEvent`)
+
+    err := parser.checkEvents()
+
+    if err == nil {
+        t.Error("wanted: parse error event test, got: ok")
+    } else {
+        wantedErr := "Event error: missing name"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestEventsMissingNameEvenWithParenthesisNonOk(t *testing.T) {
+    parser := setup(`Event()
+
+EndEvent`)
+
+    err := parser.checkEvents()
+
+    if err == nil {
+        t.Error("wanted: parse error event test, got: ok")
+    } else {
+        wantedErr := "Event error: missing name"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
     }
 }
