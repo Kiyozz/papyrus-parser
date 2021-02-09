@@ -5,7 +5,7 @@ import (
     "testing"
 )
 
-func TestCheckFunctionsOk(t *testing.T) {
+func TestFunctionBasicOk(t *testing.T) {
     parser := setup(`Scriptname test
 
 Function test()
@@ -18,7 +18,7 @@ EndFunction`)
     }
 }
 
-func TestCheckFunctionsArgOk(t *testing.T) {
+func TestFunctionWithOneArgOk(t *testing.T) {
     parser := setup(`Scriptname test
 
 Function test(string name)
@@ -31,7 +31,7 @@ EndFunction`)
     }
 }
 
-func TestCheckFunctionsArgsOk(t *testing.T) {
+func TestFunctionWithArgsOk(t *testing.T) {
     parser := setup(`Scriptname test
 
 Function test(string name, int test)
@@ -44,46 +44,46 @@ EndFunction`)
     }
 }
 
-func TestCheckFunctionsNonOk(t *testing.T) {
+func TestFunctionWithArgsArrayOk(t *testing.T) {
     parser := setup(`Scriptname test
 
-Function test()
-EndFunctio`)
-
-    err := parser.checkFunctions()
-
-    if err == nil {
-        t.Error("wanted: parse error Function test, got: ok")
-    }
-}
-
-func TestCheckFunctionsParenthesesNotClosedNonOk(t *testing.T) {
-    parser := setup(`Scriptname test
-
-Function test(
+Function test(string[] name, int test)
 EndFunction`)
 
     err := parser.checkFunctions()
 
-    if err == nil {
-        t.Error("wanted: parse error Function test, got: ok")
+    if err != nil {
+        t.Errorf("wanted: no error, got: %s", err.Error())
     }
 }
 
-func TestCheckFunctionsParenthesesNotOpenedNonOk(t *testing.T) {
+func TestFunctionReturnTypeArrayOk(t *testing.T) {
     parser := setup(`Scriptname test
 
-Function test)
+int[] Function test(string[] name, int test)
 EndFunction`)
 
     err := parser.checkFunctions()
 
-    if err == nil {
-        t.Error("wanted: parse error Function test, got: ok")
+    if err != nil {
+        t.Errorf("wanted: no error, got: %s", err.Error())
     }
 }
 
-func TestCheckFunctionsMultipleOk(t *testing.T) {
+func TestFunctionReturnTypeNonArrayOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+int Function test(string[] name, int test)
+EndFunction`)
+
+    err := parser.checkFunctions()
+
+    if err != nil {
+        t.Errorf("wanted: no error, got: %s", err.Error())
+    }
+}
+
+func TestFunctionMultipleFunctionOk(t *testing.T) {
     parser := setup(`Scriptname test
 
 Function test()
@@ -100,7 +100,102 @@ EndFunction`)
     }
 }
 
-func TestCheckFunctionsMultipleNonOk(t *testing.T) {
+func TestFunctionNotClosedNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+Function test()
+EndFunctio`)
+
+    err := parser.checkFunctions()
+
+    if err == nil {
+        t.Error("wanted: parse error Function test, got: ok")
+    } else {
+        wantedErr := "test Function error: Function is not closed"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestFunctionParenthesisNotClosedNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+Function test(
+EndFunction`)
+
+    err := parser.checkFunctions()
+
+    if err == nil {
+        t.Error("wanted: parse error Function test, got: ok")
+    } else {
+        wantedErr := "test Function error: missing close parenthesis"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestFunctionParenthesisNotOpenedWithCloseParenthesisNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+Function test)
+EndFunction`)
+
+    err := parser.checkFunctions()
+
+    if err == nil {
+        t.Error("wanted: parse error Function test, got: ok")
+    } else {
+        wantedErr := "test Function error: missing open parenthesis"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestFunctionParenthesisNotOpenedNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+Function test
+EndFunction`)
+
+    err := parser.checkFunctions()
+
+    if err == nil {
+        t.Error("wanted: parse error Function test, got: ok")
+    } else {
+        wantedErr := "test Function error: missing open parenthesis"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestFunctionMissingNameNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+Function
+EndFunction`)
+
+    err := parser.checkFunctions()
+
+    if err == nil {
+        t.Error("wanted: parse error Function test, got: ok")
+    } else {
+        wantedErr := "Function error: missing name"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestFunctionNotClosedMultipleNonOk(t *testing.T) {
     parser := setup(`Scriptname test
 
 Function test()
@@ -114,12 +209,11 @@ EndFunctio`)
 
     if err == nil {
         t.Error("wanted: parse error Function test, got: ok")
-        return
-    }
+    } else {
+        wantedErr := "String test2 Function error: Function is not closed"
 
-    message := err.Error()
-
-    if !strings.Contains(message, "String test2") {
-        t.Errorf("wanted: String test2, got: %s", message)
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
     }
 }

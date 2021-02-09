@@ -208,11 +208,12 @@ func (p *Parser) checkStatement(statement *Statement) error {
 func (p *Parser) checkBlock(statement *Statement, createErrorMessage func(returnType string, name string) string) error {
     split := strings.Split(strings.Trim(p.Content, "\n "), "\n")
     splitLen := len(split)
-    regStart := regexp.MustCompile(fmt.Sprintf(`(\w*)\s*%s\s(\w+)\(?`, statement.Start))
-    regCheckParentheses := regexp.MustCompile(fmt.Sprintf(`%s\s+\w+(\(?([\w\d]*,?\s?[\w\d]*)*\)?)`, statement.Start))
+    regStart := regexp.MustCompile(fmt.Sprintf(`(([\w\d]+)?(\[])?)?\s*%s(\s*)?([\d\w]+)?(\()?([^)]+)?(\))?`, statement.Start))
 
     for i, lineContent := range split {
-        if lineContent == "" && strings.HasPrefix(lineContent, ";") {
+        // FIXME: if user set two EndStatement without opening two, the error is not caught
+        // TO BE REMOVED: lineContent == statement.End
+        if lineContent == "" || strings.HasPrefix(lineContent, ";") || lineContent == statement.End {
             continue
         }
 
@@ -222,22 +223,40 @@ func (p *Parser) checkBlock(statement *Statement, createErrorMessage func(return
             continue
         }
 
-        checkParentheses := regCheckParentheses.FindStringSubmatch(lineContent)
+        returnType := startMatch[1]
+        name := startMatch[5]
+        openParenthesis := startMatch[6]
+        args := startMatch[7]
+        closeParenthesis := startMatch[8]
 
-        if checkParentheses != nil && (!strings.HasPrefix(checkParentheses[1], "(") || !strings.HasSuffix(checkParentheses[1], ")")) {
-            return ParseError{
-                Line:    i + 1,
-                Col:     len(lineContent),
-                File:    p.Filename,
-                Message: fmt.Sprintf("invalid %s syntax", statement.Start),
-            }
+        parseError := ParseError{
+            Line:    i + 1,
+            Col:     1,
+            File:    p.Filename,
         }
 
-        returnType := startMatch[1]
-        functionName := startMatch[2]
+        if name == "" {
+            parseError.Message = strings.Trim(fmt.Sprintf("%s %s error: missing name", returnType, statement.Start), " ")
 
-        if returnType == "" {
-            returnType = "None"
+            return parseError
+        }
+
+        if openParenthesis == "" {
+            parseError.Message = strings.Trim(fmt.Sprintf("%s %s %s error: missing open parenthesis", returnType, name, statement.Start), " ")
+
+            return parseError
+        }
+
+        if closeParenthesis == "" {
+            parseError.Message = strings.Trim(fmt.Sprintf("%s %s %s error: missing close parenthesis", returnType, name, statement.Start), " ")
+
+            return parseError
+        }
+
+        if strings.HasSuffix(args, ",") {
+            parseError.Message = strings.Trim(fmt.Sprintf("%s %s %s error: trailing comma", returnType, name, statement.Start), " ")
+
+            return parseError
         }
 
         hasEnd := true
@@ -252,13 +271,9 @@ func (p *Parser) checkBlock(statement *Statement, createErrorMessage func(return
         }
 
         if !hasEnd {
+            parseError.Message = strings.Trim(fmt.Sprintf("%s %s %s error: %s is not closed", returnType, name, statement.Start, statement.Start), " ")
 
-            return ParseError{
-                Line:    i + 1,
-                Col:     1,
-                File:    p.Filename,
-                Message: fmt.Sprintf("%s%s is not closed", createErrorMessage(returnType, functionName), statement.Start),
-            }
+            return parseError
         }
     }
 
