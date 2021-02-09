@@ -196,28 +196,49 @@ func (p *Parser) checkScriptName() error {
 func (p *Parser) checkStatement(statement *Statement) error {
     split := strings.Split(strings.Trim(p.Content, "\n "), "\n")
     splitLen := len(split)
-    reg := regexp.MustCompile(fmt.Sprintf(`%s(\s\w+|\s*\(\w+)`, statement.Start))
-    regCheckParentheses := regexp.MustCompile(fmt.Sprintf(`%s\s*(\([\w\d]+\)?|\(?[\w\d]*\))`, statement.Start))
+    reg := regexp.MustCompile(fmt.Sprintf(`%s(\s*)(\()?([^\)]+)?(\))?`, statement.Start))
 
     for i, lineContent := range split {
-        if len(lineContent) == 0 || strings.HasPrefix(lineContent, ";") || strings.HasPrefix(lineContent, ";/") {
+        if len(lineContent) == 0 || lineContent == statement.End || strings.HasPrefix(lineContent, ";") || strings.HasPrefix(lineContent, ";/") {
             continue
         }
 
-        startMatch := reg.FindStringSubmatch(lineContent)
+        match := reg.FindStringSubmatch(lineContent)
 
-        if startMatch == nil {
+        if match == nil {
             continue
         }
 
-        checkParentheses := regCheckParentheses.FindStringSubmatch(lineContent)
+        spaceBeforeOpenParenthesis := match[1]
+        openParenthesis := match[2]
+        args := match[3]
+        // spaceBeforeCloseParenthesis := match[4]
+        closeParenthesis := match[4]
 
-        if checkParentheses != nil && (!strings.HasPrefix(checkParentheses[1], "(") || !strings.HasSuffix(checkParentheses[1], ")")) {
-            return ParseError{
-                Line:    i + 1,
-                Col:     len(lineContent),
-                File:    p.Filename,
-                Message: fmt.Sprintf("invalid %s syntax", statement.Start),
+        if openParenthesis == "" && strings.HasSuffix(args, "(") && closeParenthesis == ")" {
+            args = fmt.Sprintf("%s%s", args, ")")
+            closeParenthesis = ""
+        }
+
+        parseError := ParseError{
+            Line:    i + 1,
+            Col:     1,
+            File:    p.Filename,
+        }
+
+        if openParenthesis != "" || closeParenthesis != "" {
+            if openParenthesis != "(" {
+                parseError.Col = len(fmt.Sprintf("%s%s", statement.Start, spaceBeforeOpenParenthesis))
+                parseError.Message = fmt.Sprintf("%s error: missing open parenthesis", statement.Start)
+
+                return parseError
+            }
+
+            if closeParenthesis != ")" {
+                parseError.Col = len(fmt.Sprintf("%s%s%s", statement.Start, spaceBeforeOpenParenthesis, args))
+                parseError.Message = fmt.Sprintf("%s error: missing close parenthesis", statement.Start)
+
+                return parseError
             }
         }
 

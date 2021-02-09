@@ -218,5 +218,11 @@ int Property MyProp = 0 AutoReadOnly Conditional`)
 
     if err == nil {
         t.Error("wanted parse error property, got: ok")
+    } else {
+        wantedErr := "int MyProp property error: Conditional is only applicable on property flagged Auto"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
     }
 }

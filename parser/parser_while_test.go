@@ -2,10 +2,10 @@ package parser
 
 import "testing"
 
-func TestCheckWhileOk(t *testing.T) {
+func TestWhileParenthesesWithSpaceOk(t *testing.T) {
     parser := setup(`Scriptname test
 
-while (true)
+while (true )
 
 endwhile`)
 
@@ -16,7 +16,35 @@ endwhile`)
     }
 }
 
-func TestCheckWhileNoParenthesesOk(t *testing.T) {
+func TestWhileWithFunctionCallOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+while toto()
+
+endwhile`)
+
+    err := parser.checkWhile()
+
+    if err != nil {
+        t.Errorf("wanted: no error, got: %s", err.Error())
+    }
+}
+
+func TestWhileWithFunctionCallAndParenthesisOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+while (toto())
+
+endwhile`)
+
+    err := parser.checkWhile()
+
+    if err != nil {
+        t.Errorf("wanted: no error, got: %s", err.Error())
+    }
+}
+
+func TestWhileNoParenthesesOk(t *testing.T) {
     parser := setup(`Scriptname test
 
 while true
@@ -30,7 +58,7 @@ endwhile`)
     }
 }
 
-func TestCheckWhileParenthesesNoSpacesOk(t *testing.T) {
+func TestWhileParenthesesNoSpacesOk(t *testing.T) {
     parser := setup(`Scriptname test
 
 while(true)
@@ -44,12 +72,12 @@ endwhile`)
     }
 }
 
-func TestCheckWhileEndNonOk(t *testing.T) {
+func TestWhileNotClosedNonOk(t *testing.T) {
     parser := setup(`Scriptname test
 
 while (true)
 
-endwhil`)
+endwh`)
 
     err := parser.checkWhile()
 
@@ -58,7 +86,7 @@ endwhil`)
     }
 }
 
-func TestCheckWhileParenthesesNotClosedNonOk(t *testing.T) {
+func TestWhileMissingCloseParenthesisNonOk(t *testing.T) {
     parser := setup(`Scriptname test
 
 while (true
@@ -72,7 +100,7 @@ endwhile`)
     }
 }
 
-func TestCheckWhileParenthesesNotOpenedNonOk(t *testing.T) {
+func TestWhileMissingOpenParenthesisNonOk(t *testing.T) {
     parser := setup(`Scriptname test
 
 while true)

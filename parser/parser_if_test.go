@@ -2,10 +2,10 @@ package parser
 
 import "testing"
 
-func TestCheckIfOk(t *testing.T) {
+func TestIfParenthesesWithSpaceOk(t *testing.T) {
     parser := setup(`Scriptname test
 
-if (true)
+if (true )
 
 endif`)
 
@@ -16,7 +16,7 @@ endif`)
     }
 }
 
-func TestCheckIfWithFunctionCallOk(t *testing.T) {
+func TestIfWithFunctionCallOk(t *testing.T) {
     parser := setup(`Scriptname test
 
 if toto()
@@ -30,7 +30,21 @@ endif`)
     }
 }
 
-func TestCheckIfNoParenthesesOk(t *testing.T) {
+func TestIfWithFunctionCallAndParenthesisOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+if (toto())
+
+endif`)
+
+    err := parser.checkIf()
+
+    if err != nil {
+        t.Errorf("wanted: no error, got: %s", err.Error())
+    }
+}
+
+func TestIfNoParenthesesOk(t *testing.T) {
     parser := setup(`Scriptname test
 
 if true
@@ -44,7 +58,7 @@ endif`)
     }
 }
 
-func TestCheckIfParenthesesNoSpacesOk(t *testing.T) {
+func TestIfParenthesesNoSpacesOk(t *testing.T) {
     parser := setup(`Scriptname test
 
 if(true)
@@ -58,7 +72,7 @@ endif`)
     }
 }
 
-func TestCheckIfEndNonOk(t *testing.T) {
+func TestIfNotClosedNonOk(t *testing.T) {
     parser := setup(`Scriptname test
 
 if (true)
@@ -72,7 +86,7 @@ endi`)
     }
 }
 
-func TestCheckIfParenthesesNotClosedNonOk(t *testing.T) {
+func TestIfMissingCloseParenthesisNonOk(t *testing.T) {
     parser := setup(`Scriptname test
 
 if (true
@@ -86,7 +100,7 @@ endif`)
     }
 }
 
-func TestCheckIfParenthesesNotOpenedNonOk(t *testing.T) {
+func TestIfMissingOpenParenthesisNonOk(t *testing.T) {
     parser := setup(`Scriptname test
 
 if true)
