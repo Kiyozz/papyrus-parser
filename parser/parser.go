@@ -8,14 +8,6 @@ import (
     "strings"
 )
 
-var mapFuncs = []mapTrimFuncs{{
-    Trim:  strings.TrimLeft,
-    Index: strings.Index,
-}, {
-    Trim:  strings.TrimRight,
-    Index: strings.LastIndex,
-}}
-
 var statementIf = &Statement{
     Start: "if",
     End:   "endif",
@@ -115,17 +107,35 @@ func (p *Parser) checkTrailingWhitespaces() error {
             continue
         }
 
-        for _, useFunc := range mapFuncs {
-            if useFunc.Trim(line, " ") != line {
-                col := useFunc.Index(line, " ")
+        parseError := ParseError{
+            Line: i + 1,
+            Col:  1,
+            File: p.Filename,
+        }
 
-                return ParseError{
-                    Line:    i + 1,
-                    Col:     col + 1,
-                    File:    p.Filename,
-                    Message: "trailing whitespace",
-                }
+        if strings.TrimLeft(line, " ") != line {
+            numberOfSpaces := len(line) - len(trimmedLine)
+
+            parseError.Col = numberOfSpaces + 1
+
+            if trimmedLine == "" {
+                parseError.Message = "trailing whitespace error: on empty line"
+            } else {
+                parseError.Message = "trailing whitespace error: at the beginning of the line"
             }
+
+            return parseError
+        }
+
+        if strings.TrimRight(line, " ") != line {
+            numberOfSpaces := len(line) - len(trimmedLine)
+            repeated := strings.Repeat(" ", numberOfSpaces)
+            col := strings.LastIndex(line, repeated)
+
+            parseError.Col = col + 1
+            parseError.Message = "trailing whitespace error: at the end of the line"
+
+            return parseError
         }
     }
 
@@ -221,9 +231,9 @@ func (p *Parser) checkStatement(statement *Statement) error {
         }
 
         parseError := ParseError{
-            Line:    i + 1,
-            Col:     1,
-            File:    p.Filename,
+            Line: i + 1,
+            Col:  1,
+            File: p.Filename,
         }
 
         if openParenthesis != "" || closeParenthesis != "" {
@@ -324,6 +334,13 @@ func (p *Parser) checkBlock(statement *Statement) error {
 
         for j := i + 1; j < splitLen; j++ {
             jLineContent := split[j]
+
+            if strings.HasPrefix(jLineContent, ";") {
+                hasEnd = false
+
+                continue
+            }
+
             hasEnd = strings.Contains(jLineContent, statement.End)
 
             if hasEnd {
@@ -362,7 +379,7 @@ func (p Parser) checkProperty() error {
     reg := regexp.MustCompile(`^([\w\d]+(\[])?)\s+Property(\s+([\w\d]+)?\s*(=\s*([\w\d]+))?\s*((\w+)?\s*(\w+)?$)?)?`)
 
     for i, lineContent := range split {
-        if lineContent == "" && strings.HasPrefix(lineContent, ";") {
+        if lineContent == "" || strings.HasPrefix(lineContent, ";") {
             continue
         }
 

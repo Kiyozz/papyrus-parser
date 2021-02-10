@@ -100,6 +100,20 @@ EndFunction`)
     }
 }
 
+func TestFunctionLineCommentTrailingCommaOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+;int Function test(string name,)
+
+;EndFunction`)
+
+    err := parser.checkFunctions()
+
+    if err != nil {
+        t.Errorf("wanted: ok, got: %s", err.Error())
+    }
+}
+
 func TestFunctionNotClosedNonOk(t *testing.T) {
     parser := setup(`Scriptname test
 
@@ -211,6 +225,44 @@ EndFunctio`)
         t.Error("wanted: parse error Function test, got: ok")
     } else {
         wantedErr := "String test2 Function error: Function is not closed"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestFunctionTrailingCommaNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+String Function test(string name,)
+EndFunction`)
+
+    err := parser.checkFunctions()
+
+    if err == nil {
+        t.Error("wanted: parse error Function test, got: ok")
+    } else {
+        wantedErr := "String test Function error: trailing comma"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestFunctionMissingEndInCommentNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+String Function test(string name)
+;EndFunction`)
+
+    err := parser.checkFunctions()
+
+    if err == nil {
+        t.Error("wanted: parse error Function test, got: ok")
+    } else {
+        wantedErr := "String test Function error: Function is not closed"
 
         if !strings.HasSuffix(err.Error(), wantedErr) {
             t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())

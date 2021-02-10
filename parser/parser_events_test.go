@@ -37,6 +37,20 @@ EndEvent`)
     }
 }
 
+func TestEventLineCommentTrailingCommaOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+;Event test(string name,)
+
+;EndEvent`)
+
+    err := parser.checkEvents()
+
+    if err != nil {
+        t.Errorf("wanted: ok, got: %s", err.Error())
+    }
+}
+
 func TestEventsMultipleEventsNotClosedNonOk(t *testing.T) {
     parser := setup(`Event OnUpdate()
 
@@ -132,6 +146,25 @@ EndEvent`)
         t.Error("wanted: parse error event test, got: ok")
     } else {
         wantedErr := "Event error: missing name"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestEventMissingEndInCommentNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+Event test(string name)
+;EndEvent`)
+
+    err := parser.checkEvents()
+
+    if err == nil {
+        t.Error("wanted: parse error Function test, got: ok")
+    } else {
+        wantedErr := "test Event error: Event is not closed"
 
         if !strings.HasSuffix(err.Error(), wantedErr) {
             t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())

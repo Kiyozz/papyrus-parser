@@ -89,6 +89,18 @@ int Property MyProp=0 Auto`)
     }
 }
 
+func TestPropertyLineCommentAutoReadOnlyNoDefaultValueOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+;int Property MyProp AutoReadOnly`)
+
+    err := parser.checkProperty()
+
+    if err != nil {
+        t.Errorf("wanted: ok, got: %s", err.Error())
+    }
+}
+
 func TestPropertyArrayTypeOk(t *testing.T) {
     parser := setup(`Scriptname test
 
