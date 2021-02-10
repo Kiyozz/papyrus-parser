@@ -4,7 +4,7 @@ import (
     "fmt"
 )
 
-type RuntimeError struct {
+type CreateParserError struct {
     message string
 }
 
@@ -15,17 +15,8 @@ type ParseError struct {
     Message string
 }
 
-type FilenameError struct {
-    file    string
-    message string
-}
-
-func (e RuntimeError) Error() string {
-    return fmt.Sprintf("runtime error: %s", e.message)
-}
-
-func (e FilenameError) Error() string {
-    return fmt.Sprintf("%s: cannot find Filename", e.file)
+func (e CreateParserError) Error() string {
+    return fmt.Sprintf("cannot create parser: %s", e.message)
 }
 
 func (e ParseError) Error() string {
