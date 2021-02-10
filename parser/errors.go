@@ -15,13 +15,9 @@ type ParseError struct {
     Message string
 }
 
-type mapTrimFuncs struct {
-    Trim  func(_ string, _ string) string
-    Index func(_ string, _ string) int
-}
-
 type FilenameError struct {
-    file string
+    file    string
+    message string
 }
 
 func (e RuntimeError) Error() string {

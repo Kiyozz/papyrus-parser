@@ -4,6 +4,7 @@ import (
     "fmt"
     "io/ioutil"
     "os"
+    "path"
     "regexp"
     "strings"
 )
@@ -47,36 +48,63 @@ type StatementBlock struct {
 }
 
 func New(file string) (*Parser, error) {
-    reg := regexp.MustCompile(`/(.*\.psc)`)
-    s := reg.FindStringSubmatch(file)
+    absolutePath, err := getAbsolutePath(file)
 
-    if len(s) == 1 {
-        fmt.Print("cannot find Filename in " + file)
+    if err != nil {
+        return nil, RuntimeError{message: fmt.Sprintf("cannot create parser: %s", err.Error())}
+    }
 
-        return nil, FilenameError{file: file}
+    contentByte, err := readFile(absolutePath)
+
+    if err != nil {
+        return nil, RuntimeError{message: "cannot create parser: cannot find File " + err.Error()}
+    }
+
+    content := string(contentByte)
+    filename, scriptName, err := getFilenameAndScriptName(absolutePath)
+
+    if err != nil {
+        return nil, RuntimeError{message: fmt.Sprintf("cannot create parser: %s", err.Error())}
+    }
+
+    return &Parser{
+        File:       file,
+        Filename:   filename,
+        Content:    content,
+        ScriptName: scriptName,
+    }, nil
+}
+
+func getAbsolutePath(file string) (string, error) {
+    if path.IsAbs(file) {
+        return file, nil
     }
 
     wd, err := os.Getwd()
 
     if err != nil {
-        return nil, RuntimeError{message: "cannot get current directory"}
+        return "", RuntimeError{message: "cannot get current directory"}
     }
 
-    contentByte, err := ioutil.ReadFile(wd + "/" + file)
+    return path.Join(wd, file), nil
+}
 
-    if err != nil {
-        return nil, RuntimeError{message: "cannot find File " + err.Error()}
+func getFilenameAndScriptName(file string) (string, string, error) {
+    base := path.Base(file)
+
+    if path.Ext(file) != ".psc" {
+        return "", "", RuntimeError{message: fmt.Sprintf("cannot use file %s, file does not have .psc extension", base)}
     }
 
-    content := string(contentByte)
-    scriptName := strings.Replace(s[1], ".psc", "", 1)
+    return base, strings.Replace(base, ".psc", "", 1), nil
+}
 
-    return &Parser{
-        File:       file,
-        Filename:   s[1],
-        Content:    content,
-        ScriptName: scriptName,
-    }, nil
+func readFile(file string) ([]byte, error) {
+    if !path.IsAbs(file) {
+        return nil, RuntimeError{message: fmt.Sprintf("cannot read file %s, not an absolute path", file)}
+    }
+
+    return ioutil.ReadFile(file)
 }
 
 func (p *Parser) Parse() error {
@@ -209,7 +237,7 @@ func (p *Parser) checkStatement(statement *Statement) error {
     reg := regexp.MustCompile(fmt.Sprintf(`%s(\s*)(\()?([^\)]+)?(\))?`, statement.Start))
 
     for i, lineContent := range split {
-        if len(lineContent) == 0 || lineContent == statement.End || strings.HasPrefix(lineContent, ";") || strings.HasPrefix(lineContent, ";/") {
+        if len(lineContent) == 0 || strings.Trim(lineContent, " ") == statement.End || strings.HasPrefix(lineContent, ";") || strings.HasPrefix(lineContent, ";/") {
             continue
         }
 
@@ -222,7 +250,6 @@ func (p *Parser) checkStatement(statement *Statement) error {
         spaceBeforeOpenParenthesis := match[1]
         openParenthesis := match[2]
         args := match[3]
-        // spaceBeforeCloseParenthesis := match[4]
         closeParenthesis := match[4]
 
         if openParenthesis == "" && strings.HasSuffix(args, "(") && closeParenthesis == ")" {
@@ -256,6 +283,13 @@ func (p *Parser) checkStatement(statement *Statement) error {
 
         for j := i + 1; j < splitLen; j++ {
             jLineContent := split[j]
+
+            if strings.HasPrefix(jLineContent, ";") {
+                hasEnd = false
+
+                continue
+            }
+
             hasEnd = strings.Contains(jLineContent, statement.End)
 
             if hasEnd {
