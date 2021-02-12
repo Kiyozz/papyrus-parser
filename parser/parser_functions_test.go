@@ -269,3 +269,27 @@ String Function test(string name)
         }
     }
 }
+
+func TestFunctionMultipleMissingEndInCommentNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+Int Function test()
+
+;EndFunction
+
+Function test3()
+
+EndFunction`)
+
+    err := parser.checkFunctions()
+
+    if err == nil {
+        t.Error("wanted: parse error Function test, got: ok")
+    } else {
+        wantedErr := "test3 Function error: Function is not closed"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}

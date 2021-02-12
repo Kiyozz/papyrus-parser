@@ -6,5 +6,6 @@ func setup(content string) *Parser {
         Filename:   "test.psc",
         Content:    content,
         ScriptName: "test",
+        lineIgnore: []uint16{},
     }
 }

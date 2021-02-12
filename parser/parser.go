@@ -36,15 +36,13 @@ type Parser struct {
     Extends    string
     Flag       string
     ScriptName string
+
+    lineIgnore []uint16
 }
 
 type Statement struct {
     Start string
     End   string
-}
-
-type StatementBlock struct {
-    Statement
 }
 
 func New(file string) (*Parser, error) {
@@ -72,6 +70,7 @@ func New(file string) (*Parser, error) {
         Filename:   filename,
         Content:    content,
         ScriptName: scriptName,
+        lineIgnore: []uint16{},
     }, nil
 }
 
@@ -120,16 +119,10 @@ func readFile(file string) ([]byte, error) {
 }
 
 func (p *Parser) Parse() error {
-    err := p.checkScriptName()
-
-    if err != nil {
-        return err
-    }
-
-    checks := []func() error{p.checkTrailingWhitespaces, p.checkFunctions, p.checkIf, p.checkWhile}
+    checks := []func() error{p.checkTrailingWhitespaces, p.checkScriptName, p.checkFunctions, p.checkIf, p.checkWhile}
 
     for _, check := range checks {
-        err = check()
+        err := check()
 
         if err != nil {
             return err
@@ -139,15 +132,37 @@ func (p *Parser) Parse() error {
     return nil
 }
 
+func (p *Parser) lines(trim bool) []string {
+    content := p.Content
+
+    if trim {
+        content = strings.Trim(content, " ")
+    }
+
+    s := strings.Split(content, "\n")
+
+    if trim {
+        s = mapFunc(s, func(v string) string {
+            return strings.Trim(v, " ")
+        })
+
+        s = filterFunc(s, func(v string) bool {
+            return !strings.HasPrefix(v, ";")
+        })
+    }
+
+    return filter(s, "")
+}
+
 func (p *Parser) checkTrailingWhitespaces() error {
-    for i, line := range strings.Split(p.Content, "\n") {
+    for i, line := range p.lines(false) {
         trimmedLine := strings.Trim(line, " ")
 
         if trimmedLine != "" && !strings.HasPrefix(trimmedLine, "Function") && !strings.HasPrefix(trimmedLine, "Event") && !strings.HasPrefix(trimmedLine, "Scriptname") {
             continue
         }
 
-        parseError := ParseError{
+        err := ParseError{
             Line: i + 1,
             Col:  1,
             File: p.Filename,
@@ -156,15 +171,15 @@ func (p *Parser) checkTrailingWhitespaces() error {
         if strings.TrimLeft(line, " ") != line {
             numberOfSpaces := len(line) - len(trimmedLine)
 
-            parseError.Col = numberOfSpaces + 1
+            err.Col = numberOfSpaces + 1
 
             if trimmedLine == "" {
-                parseError.Message = "trailing whitespace error: on empty line"
+                err.Message = "trailing whitespace error: on empty line"
             } else {
-                parseError.Message = "trailing whitespace error: at the beginning of the line"
+                err.Message = "trailing whitespace error: at the beginning of the line"
             }
 
-            return parseError
+            return err
         }
 
         if strings.TrimRight(line, " ") != line {
@@ -172,10 +187,10 @@ func (p *Parser) checkTrailingWhitespaces() error {
             repeated := strings.Repeat(" ", numberOfSpaces)
             col := strings.LastIndex(line, repeated)
 
-            parseError.Col = col + 1
-            parseError.Message = "trailing whitespace error: at the end of the line"
+            err.Col = col + 1
+            err.Message = "trailing whitespace error: at the end of the line"
 
-            return parseError
+            return err
         }
     }
 
@@ -183,22 +198,20 @@ func (p *Parser) checkTrailingWhitespaces() error {
 }
 
 func (p *Parser) checkScriptName() error {
-    scriptNameLine := strings.Trim(strings.Split(p.Content, "\n")[0], "\n ")
-
+    scriptNameLine := p.lines(true)[0]
     reg := regexp.MustCompile(`(Scriptname)(\s)?([\w\d]+)?(\s*)(extends)?(\s*)([\w\d]+)?(\s*)([\w\d]+)?`)
-
     match := reg.FindStringSubmatch(scriptNameLine)
 
-    parseError := ParseError{
+    err := ParseError{
         Line: 1,
         Col:  1,
         File: p.Filename,
     }
 
     if match == nil {
-        parseError.Message = "Scriptname error: no Scriptname specified"
+        err.Message = "Scriptname error: no Scriptname specified"
 
-        return parseError
+        return err
     }
 
     scriptName := match[1]
@@ -212,44 +225,45 @@ func (p *Parser) checkScriptName() error {
     scriptNameFlag := match[9]
 
     if spaceBetweenScriptNameAndName == "" {
-        parseError.Col = len(scriptName)
-        parseError.Message = "Scriptname error: missing space after Scriptname"
+        err.Col = len(scriptName)
+        err.Message = "Scriptname error: missing space after Scriptname"
 
-        return parseError
+        return err
     }
 
     if scriptNameValue != p.ScriptName {
-        parseError.Col = len(fmt.Sprintf("%s ", scriptName))
+        err.Col = len(fmt.Sprintf("%s ", scriptName))
 
         if scriptNameValue == "" {
-            parseError.Message = "Scriptname error: missing name"
+            err.Message = "Scriptname error: missing name"
         } else {
-            parseError.Message = fmt.Sprintf("Scriptname error: Scriptname must match filename, %s expected, got %s", p.ScriptName, scriptNameValue)
+            err.Message = fmt.Sprintf("Scriptname error: Scriptname must match filename, %s expected, got %s", p.ScriptName, scriptNameValue)
         }
 
-        return parseError
+        return err
     }
 
     if scriptNameFlag != "" && scriptNameFlag != "Conditional" && scriptNameFlag != "Hidden" {
-        parseError.Col = len(fmt.Sprintf("%s %s%s%s%s%s%s", scriptName, scriptNameValue, spaceBeforeExtends, extends, spaceAfterExtends, extendedScript, spaceAfterExtended))
-        parseError.Message = fmt.Sprintf("Scriptname error: unknown flag %s", scriptNameFlag)
+        err.Col = len(fmt.Sprintf("%s %s%s%s%s%s%s", scriptName, scriptNameValue, spaceBeforeExtends, extends, spaceAfterExtends, extendedScript, spaceAfterExtended))
+        err.Message = fmt.Sprintf("Scriptname error: unknown flag %s", scriptNameFlag)
 
-        return parseError
+        return err
     }
 
     p.Extends = extendedScript
     p.Flag = scriptNameFlag
+    p.lineIgnore = append(p.lineIgnore, 1)
 
     return nil
 }
 
-func (p *Parser) checkStatement(statement *Statement) error {
-    split := strings.Split(strings.Trim(p.Content, "\n "), "\n")
+func (p *Parser) checkStatement(s *Statement) error {
+    split := p.lines(true)
     splitLen := len(split)
-    reg := regexp.MustCompile(fmt.Sprintf(`%s(\s*)(\()?([^\)]+)?(\))?`, statement.Start))
+    reg := regexp.MustCompile(fmt.Sprintf(`^%s(\s*)(\()?([^)|&=!"'@#\-*+]+)?([|&=!"'@#\-*+/(]+)?(\))?`, s.Start))
 
     for i, lineContent := range split {
-        if len(lineContent) == 0 || strings.Trim(lineContent, " ") == statement.End || strings.HasPrefix(lineContent, ";") || strings.HasPrefix(lineContent, ";/") {
+        if contains(p.lineIgnore, uint16(i)) || lineContent == s.End {
             continue
         }
 
@@ -262,14 +276,15 @@ func (p *Parser) checkStatement(statement *Statement) error {
         spaceBeforeOpenParenthesis := match[1]
         openParenthesis := match[2]
         args := match[3]
-        closeParenthesis := match[4]
+        extraCharacters := match[4]
+        closeParenthesis := match[5]
 
         if openParenthesis == "" && strings.HasSuffix(args, "(") && closeParenthesis == ")" {
             args = fmt.Sprintf("%s%s", args, ")")
             closeParenthesis = ""
         }
 
-        parseError := ParseError{
+        err := ParseError{
             Line: i + 1,
             Col:  1,
             File: p.Filename,
@@ -277,34 +292,42 @@ func (p *Parser) checkStatement(statement *Statement) error {
 
         if openParenthesis != "" || closeParenthesis != "" {
             if openParenthesis != "(" {
-                parseError.Col = len(fmt.Sprintf("%s%s", statement.Start, spaceBeforeOpenParenthesis))
-                parseError.Message = fmt.Sprintf("%s error: missing open parenthesis", statement.Start)
+                err.Col = len(fmt.Sprintf("%s%s", s.Start, spaceBeforeOpenParenthesis))
+                err.Message = fmt.Sprintf("%s error: missing open parenthesis", s.Start)
 
-                return parseError
+                return err
             }
 
             if closeParenthesis != ")" {
-                parseError.Col = len(fmt.Sprintf("%s%s%s", statement.Start, spaceBeforeOpenParenthesis, args))
-                parseError.Message = fmt.Sprintf("%s error: missing close parenthesis", statement.Start)
+                err.Col = len(fmt.Sprintf("%s%s%s", s.Start, spaceBeforeOpenParenthesis, args))
+                err.Message = fmt.Sprintf("%s error: missing close parenthesis", s.Start)
 
-                return parseError
+                return err
             }
         }
 
-        hasEnd := true
+        if extraCharacters != "" {
+            err.Col = len(lineContent)
+            err.Message = fmt.Sprintf("%s error: extraneous %s", s.Start, extraCharacters)
+
+            return err
+        }
+
+        hasEnd := i + 1 < splitLen
 
         for j := i + 1; j < splitLen; j++ {
             jLineContent := split[j]
 
-            if strings.HasPrefix(jLineContent, ";") {
+            if contains(p.lineIgnore, uint16(j)) {
                 hasEnd = false
 
                 continue
             }
 
-            hasEnd = strings.Contains(jLineContent, statement.End)
+            hasEnd = strings.HasPrefix(jLineContent, s.End)
 
             if hasEnd {
+                p.lineIgnore = append(p.lineIgnore, uint16(j))
                 break
             }
         }
@@ -314,7 +337,7 @@ func (p *Parser) checkStatement(statement *Statement) error {
                 Line:    i + 1,
                 Col:     1,
                 File:    p.Filename,
-                Message: fmt.Sprintf("%s is not closed (missing %s)", statement.Start, statement.End),
+                Message: fmt.Sprintf("%s is not closed (missing %s)", s.Start, s.End),
             }
         }
     }
@@ -322,15 +345,15 @@ func (p *Parser) checkStatement(statement *Statement) error {
     return nil
 }
 
-func (p *Parser) checkBlock(statement *Statement) error {
-    split := strings.Split(strings.Trim(p.Content, "\n "), "\n")
+func (p *Parser) checkBlock(s *Statement) error {
+    split := p.lines(true)
     splitLen := len(split)
-    regStart := regexp.MustCompile(fmt.Sprintf(`(([\w\d]+)?(\[])?)?\s*%s(\s*)?([\d\w]+)?(\()?([^)]+)?(\))?`, statement.Start))
+    regStart := regexp.MustCompile(fmt.Sprintf(`(([\w\d]+)?(\[])?)?\s*%s(\s*)?([\d\w]+)?(\()?([^)]+)?(\))?`, s.Start))
 
     for i, lineContent := range split {
         // FIXME: if user set two EndStatement without opening two, the error is not caught
-        // TO BE REMOVED: lineContent == statement.End
-        if lineContent == "" || strings.HasPrefix(lineContent, ";") || lineContent == statement.End {
+        // TO BE REMOVED: lineContent == s.End
+        if contains(p.lineIgnore, uint16(i)) || lineContent == s.End {
             continue
         }
 
@@ -346,58 +369,60 @@ func (p *Parser) checkBlock(statement *Statement) error {
         args := startMatch[7]
         closeParenthesis := startMatch[8]
 
-        parseError := ParseError{
+        err := ParseError{
             Line: i + 1,
             Col:  1,
             File: p.Filename,
         }
 
         if name == "" {
-            parseError.Message = strings.Trim(fmt.Sprintf("%s %s error: missing name", returnType, statement.Start), " ")
+            err.Message = strings.Trim(fmt.Sprintf("%s %s error: missing name", returnType, s.Start), " ")
 
-            return parseError
+            return err
         }
 
         if openParenthesis == "" {
-            parseError.Message = strings.Trim(fmt.Sprintf("%s %s %s error: missing open parenthesis", returnType, name, statement.Start), " ")
+            err.Message = strings.Trim(fmt.Sprintf("%s %s %s error: missing open parenthesis", returnType, name, s.Start), " ")
 
-            return parseError
+            return err
         }
 
         if closeParenthesis == "" {
-            parseError.Message = strings.Trim(fmt.Sprintf("%s %s %s error: missing close parenthesis", returnType, name, statement.Start), " ")
+            err.Message = strings.Trim(fmt.Sprintf("%s %s %s error: missing close parenthesis", returnType, name, s.Start), " ")
 
-            return parseError
+            return err
         }
 
         if strings.HasSuffix(args, ",") {
-            parseError.Message = strings.Trim(fmt.Sprintf("%s %s %s error: trailing comma", returnType, name, statement.Start), " ")
+            err.Message = strings.Trim(fmt.Sprintf("%s %s %s error: trailing comma", returnType, name, s.Start), " ")
 
-            return parseError
+            return err
         }
 
-        hasEnd := true
+        hasEnd := i + 1 < splitLen
 
         for j := i + 1; j < splitLen; j++ {
             jLineContent := split[j]
 
-            if strings.HasPrefix(jLineContent, ";") {
+            if jLineContent == "" || contains(p.lineIgnore, uint16(j)) {
                 hasEnd = false
 
                 continue
             }
 
-            hasEnd = strings.Contains(jLineContent, statement.End)
+            hasEnd = strings.HasPrefix(jLineContent, s.End)
 
             if hasEnd {
+                p.lineIgnore = append(p.lineIgnore, uint16(j))
+
                 break
             }
         }
 
         if !hasEnd {
-            parseError.Message = strings.Trim(fmt.Sprintf("%s %s %s error: %s is not closed", returnType, name, statement.Start, statement.Start), " ")
+            err.Message = strings.Trim(fmt.Sprintf("%s %s %s error: %s is not closed", returnType, name, s.Start, s.Start), " ")
 
-            return parseError
+            return err
         }
     }
 
@@ -421,14 +446,10 @@ func (p *Parser) checkWhile() error {
 }
 
 func (p Parser) checkProperty() error {
-    split := strings.Split(strings.Trim(p.Content, "\n "), "\n")
+    split := p.lines(true)
     reg := regexp.MustCompile(`^([\w\d]+(\[])?)\s+Property(\s+([\w\d]+)?\s*(=\s*([\w\d]+))?\s*((\w+)?\s*(\w+)?$)?)?`)
 
     for i, lineContent := range split {
-        if lineContent == "" || strings.HasPrefix(lineContent, ";") {
-            continue
-        }
-
         match := reg.FindStringSubmatch(lineContent)
 
         if match == nil {
@@ -441,50 +462,98 @@ func (p Parser) checkProperty() error {
         propFlag := match[8]      // Auto/AutoReadOnly
         propExtraFlag := match[9] // Hidden/Conditional
 
-        parseError := ParseError{
+        err := ParseError{
             Line: i + 1,
             Col:  len(lineContent), // FIXME: not the same everywhere
             File: p.Filename,
         }
 
         if propName == "" {
-            parseError.Message = fmt.Sprintf("%s property error: missing name", propType)
+            err.Message = fmt.Sprintf("%s property error: missing name", propType)
 
-            return parseError
+            return err
         }
 
         if propFlag == "" {
-            parseError.Message = fmt.Sprintf("%s %s property error: missing flag", propType, propName)
+            err.Message = fmt.Sprintf("%s %s property error: missing flag", propType, propName)
 
-            return parseError
+            return err
         } else {
             if propFlag != "AutoReadOnly" && propFlag != "Auto" {
-                parseError.Message = fmt.Sprintf("%s %s property error: unknown flag %s", propType, propName, propFlag)
+                err.Message = fmt.Sprintf("%s %s property error: unknown flag %s", propType, propName, propFlag)
 
-                return parseError
+                return err
             }
 
             if propFlag == "AutoReadOnly" && defaultValue == "" {
-                parseError.Message = fmt.Sprintf("%s %s property error: an AutoReadOnly property must have a default value", propType, propName)
+                err.Message = fmt.Sprintf("%s %s property error: an AutoReadOnly property must have a default value", propType, propName)
 
-                return parseError
+                return err
             }
         }
 
         if propExtraFlag != "" {
             if propExtraFlag != "Conditional" && propExtraFlag != "Hidden" {
-                parseError.Message = fmt.Sprintf("%s %s property error: unknown flag %s", propType, propName, propExtraFlag)
+                err.Message = fmt.Sprintf("%s %s property error: unknown flag %s", propType, propName, propExtraFlag)
 
-                return parseError
+                return err
             }
 
             if propFlag != "Auto" && propExtraFlag == "Conditional" {
-                parseError.Message = fmt.Sprintf("%s %s property error: Conditional is only applicable on property flagged Auto", propType, propName)
+                err.Message = fmt.Sprintf("%s %s property error: Conditional is only applicable on property flagged Auto", propType, propName)
 
-                return parseError
+                return err
             }
         }
     }
 
     return nil
+}
+
+func isComment(line string) bool {
+    return strings.HasPrefix(strings.Trim(line, " "), ";")
+}
+
+func contains(slice []uint16, item uint16) bool {
+    for _, a := range slice {
+        if a == item {
+            return true
+        }
+    }
+
+    return false
+}
+
+func filter(s []string, v string) []string {
+    var f []string
+
+    for _, sv := range s {
+        if sv != v {
+            f = append(f, sv)
+        }
+    }
+
+    return f
+}
+
+func filterFunc(s []string, v func(_ string) bool) []string {
+    var f []string
+
+    for _, sv := range s {
+        if v(sv) {
+            f = append(f, sv)
+        }
+    }
+
+    return f
+}
+
+func mapFunc(s []string, c func(_ string) string) []string {
+    f := s
+
+    for i, v := range s {
+        f[i] = c(v)
+    }
+
+    return f
 }

@@ -121,7 +121,7 @@ endif`)
     err := parser.checkIf()
 
     if err == nil {
-        t.Error("wanted: parse error if statement not closed, got: ok")
+        t.Error("wanted: parse error if missing close parenthesis, got: ok")
     } else {
         wantedErr := "if error: missing close parenthesis"
 
@@ -141,7 +141,7 @@ endif`)
     err := parser.checkIf()
 
     if err == nil {
-        t.Error("wanted: parse error if statement not closed, got: ok")
+        t.Error("wanted: parse error if missing open parenthesis, got: ok")
     } else {
         wantedErr := "if error: missing open parenthesis"
 
@@ -164,6 +164,190 @@ if (true)
         t.Error("wanted: parse error if statement not closed, got: ok")
     } else {
         wantedErr := "if is not closed (missing endif)"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestIfMissingEndInDeepNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+if (true)
+
+    if true
+
+    endi
+
+endif`)
+
+    err := parser.checkIf()
+
+    if err == nil {
+        t.Error("wanted: parse error if statement not closed, got: ok")
+    } else {
+        wantedErr := "if is not closed (missing endif)"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestIfExtraPipeNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+if true ||
+
+endif`)
+
+    err := parser.checkIf()
+
+    if err == nil {
+        t.Error("wanted: parse error extraneous ||, got: ok")
+    } else {
+        wantedErr := "if error: extraneous ||"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestIfExtraAndNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+if true &&
+
+endif`)
+
+    err := parser.checkIf()
+
+    if err == nil {
+        t.Error("wanted: parse error extraneous &&, got: ok")
+    } else {
+        wantedErr := "if error: extraneous &&"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestIfExtraEqualsNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+if true =
+
+endif`)
+
+    err := parser.checkIf()
+
+    if err == nil {
+        t.Error("wanted: parse error extraneous =, got: ok")
+    } else {
+        wantedErr := "if error: extraneous ="
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestIfExtraPlusNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+if true +
+
+endif`)
+
+    err := parser.checkIf()
+
+    if err == nil {
+        t.Error("wanted: parse error extraneous +, got: ok")
+    } else {
+        wantedErr := "if error: extraneous +"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestIfExtraMinusNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+if true -
+
+endif`)
+
+    err := parser.checkIf()
+
+    if err == nil {
+        t.Error("wanted: parse error extraneous -, got: ok")
+    } else {
+        wantedErr := "if error: extraneous -"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestIfExtraMultiplicationNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+if true *
+
+endif`)
+
+    err := parser.checkIf()
+
+    if err == nil {
+        t.Error("wanted: parse error extraneous *, got: ok")
+    } else {
+        wantedErr := "if error: extraneous *"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestIfExtraQuoteNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+if true '
+
+endif`)
+
+    err := parser.checkIf()
+
+    if err == nil {
+        t.Error("wanted: parse error extraneous ', got: ok")
+    } else {
+        wantedErr := "if error: extraneous '"
+
+        if !strings.HasSuffix(err.Error(), wantedErr) {
+            t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
+        }
+    }
+}
+
+func TestIfExtraDoubleQuoteNonOk(t *testing.T) {
+    parser := setup(`Scriptname test
+
+if true "
+
+endif`)
+
+    err := parser.checkIf()
+
+    if err == nil {
+        t.Error("wanted: parse error extraneous \", got: ok")
+    } else {
+        wantedErr := "if error: extraneous \""
 
         if !strings.HasSuffix(err.Error(), wantedErr) {
             t.Errorf("wanted error: %s, got: %s", wantedErr, err.Error())
