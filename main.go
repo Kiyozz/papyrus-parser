@@ -3,7 +3,7 @@ package main
 import (
     "fmt"
     "log"
-    "psc-parser/parser"
+    "papyrus-parser/parser"
 )
 
 func main() {
