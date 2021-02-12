@@ -3,7 +3,7 @@ package parser
 import "testing"
 
 func TestComplexEventPropertyIfOk(t *testing.T) {
-    parser := setup(`Scriptname test extends Quest
+	parser := setup(`Scriptname test extends Quest
 
 Int Property modId  Auto
 Int Property modCRC  Auto
@@ -54,15 +54,15 @@ Event OnCustomEvent(string name)
 
 EndEvent`)
 
-    err := parser.Parse()
+	err := parser.Lint()
 
-    if err != nil {
-        t.Errorf(`wanted: no error, got: %s`, err.Error())
-    }
+	if err != nil {
+		t.Errorf(`wanted: no error, got: %s`, err.Error())
+	}
 }
 
 func TestComplexEventPropertyIfDoubleConditionsOk(t *testing.T) {
-    parser := setup(`Scriptname test extends Quest
+	parser := setup(`Scriptname test extends Quest
 
 Int Property modId  Auto
 Int Property modCRC  Auto
@@ -113,9 +113,9 @@ Event OnCustomEvent(string name)
 
 EndEvent`)
 
-    err := parser.Parse()
+	err := parser.Lint()
 
-    if err != nil {
-        t.Errorf(`wanted: no error, got: %s`, err.Error())
-    }
+	if err != nil {
+		t.Errorf(`wanted: no error, got: %s`, err.Error())
+	}
 }
