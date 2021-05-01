@@ -1,127 +1,7 @@
 import 'package:charcode/ascii.dart';
 
-enum NodeType {
-  eof,
-  name,
-  asKw,
-  autoKw,
-  autoReadOnlyKw,
-  boolKw,
-  elseKw,
-  elseIfKw,
-  endEventKw,
-  endFunctionKw,
-  endIfKw,
-  endPropertyKw,
-  endStateKw,
-  endWhileKw,
-  eventKw,
-  extendsKw,
-  falseKw,
-  floatKw,
-  functionKw,
-  globalKw,
-  ifKw,
-  importKw,
-  intKw,
-  lengthKw,
-  nativeKw,
-  newKw,
-  noneKw,
-  parentKw,
-  propertyKw,
-  returnKw,
-  scriptNameKw,
-  selfKw,
-  stateKw,
-  stringKw,
-  trueKw,
-  whileKw,
-  parenL,
-  parenR,
-  comma,
-  bracketL,
-  bracketR,
-  braceL,
-  braceR,
-  colon,
-  prefix,
-  equality,
-  assign,
-  num,
-  slash,
-  string,
-  binary,
-  logical,
-  logicalOR,
-  logicalAND,
-  incrementDecrement,
-  plusMinus,
-  relational,
-  char,
-  star,
-  starstar,
-  modulo,
-  dot,
-  id,
-  literal,
-  block,
-  member,
-  variable,
-  program,
-  lineTerminator
-}
-
-const keywordsMap = {
-  'as': NodeType.asKw,
-  'auto': NodeType.autoKw,
-  'autoreadonly': NodeType.autoReadOnlyKw,
-  'bool': NodeType.boolKw,
-  'else': NodeType.elseKw,
-  'elseif': NodeType.elseIfKw,
-  'endevent': NodeType.endEventKw,
-  'endfunction': NodeType.endFunctionKw,
-  'endif': NodeType.endIfKw,
-  'endproperty': NodeType.endPropertyKw,
-  'endstate': NodeType.endStateKw,
-  'endwhile': NodeType.endWhileKw,
-  'event': NodeType.eventKw,
-  'extends': NodeType.extendsKw,
-  'false': NodeType.falseKw,
-  'float': NodeType.floatKw,
-  'function': NodeType.functionKw,
-  'global': NodeType.globalKw,
-  'if': NodeType.ifKw,
-  'import': NodeType.importKw,
-  'int': NodeType.intKw,
-  'length': NodeType.lengthKw,
-  'native': NodeType.nativeKw,
-  'new': NodeType.newKw,
-  'none': NodeType.noneKw,
-  'parent': NodeType.parentKw,
-  'property': NodeType.propertyKw,
-  'return': NodeType.returnKw,
-  'scriptname': NodeType.scriptNameKw,
-  'self': NodeType.selfKw,
-  'state': NodeType.stateKw,
-  'string': NodeType.stringKw,
-  'true': NodeType.trueKw,
-  'while': NodeType.whileKw,
-};
-
-class Identifier {
-  int start;
-  int end;
-  String name;
-
-  final type = NodeType.id;
-
-  Identifier({
-    required this.start,
-    required this.end,
-    required this.name,
-  });
-}
+import 'exception.dart';
+import 'types.dart';
 
 class Node {
   NodeType? type;
@@ -151,6 +31,17 @@ class Node {
   Node? callee;
   List<Node?> arguments = [];
 
+  Node? expression;
+
+  Node? declaration;
+  String? kind;
+  Node? init;
+
+  Node? extendsDeclaration;
+  Node? extendedType;
+
+  List<Node>? flags;
+
   Node({
     required this.start,
     this.end = 0,
@@ -177,6 +68,8 @@ class Tree {
   /// Type of current token
   NodeType _type = NodeType.eof;
 
+  bool _firstRead = true;
+
   /// For tokens that include more information than their type, the value
   dynamic? _value;
 
@@ -197,16 +90,14 @@ class Tree {
   /// given position
   final _context = Context();
 
-  bool _containsEscape = false;
-
   final _keywords = RegExp(
-    r'^(?:as|auto|autoreadonly|bool|else|elseif|endevent|endfunction|endif|endproperty|endstate|endwhile|event|extends|false|float|function|global|if|import|int|length|native|new|none|parent|property|return|scriptname|self|state|string|true|while)$',
+    r'^(?:as|auto|autoreadonly|conditional|hidden|writeonly|readonly|locked|bool|else|elseif|endevent|endfunction|endif|endproperty|endstate|endwhile|event|extends|false|float|function|global|if|import|int|length|native|new|none|parent|property|return|scriptname|self|state|string|true|while)$',
     caseSensitive: false,
   );
 
   int get _next => _content.codeUnitAt(_pos + 1);
 
-  int get _current => _content.codeUnitAt(_pos);
+  Node? _lastNode;
 
   Tree({
     required String content,
@@ -237,8 +128,10 @@ class Tree {
 
     _goNext();
 
-    return _finishNode(program, NodeType.program, null);
+    return _finishNode(program, NodeType.program);
   }
+
+  int _currentCodeUnit({int? pos}) => _content.codeUnitAt(pos ?? _pos);
 
   void _goNext() {
     _lastTokenEnd = _end;
@@ -251,22 +144,126 @@ class Tree {
     final node = _startNode();
 
     switch (startType) {
+      case NodeType.scriptNameKw:
+        return _parseScriptNameStatement(node);
       case NodeType.functionKw:
         return _parseFunctionStatement(node);
       case NodeType.ifKw:
         return _parseIfStatement(node, context: context);
+      case NodeType.propertyKw:
+        return _parsePropertyStatement(node);
       case NodeType.variable:
-        return _parseVariable(node);
+        // TODO: get variable type
+        return _parseVariableStatement(node: node, kind: '');
       default:
-        if (_isNewLine(_current)) {
+        if (_isNewLine(_currentCodeUnit())) {
           return _parseBlock(node, startType);
         }
 
         final maybeName = _value;
         final expr = _parseExpression();
 
-        return _parseExpressionStatement(node, expr);
+        return _parseExpressionStatement(node: node, expr: expr);
     }
+  }
+
+  Node _parsePropertyStatement(Node node) {
+    _goNext();
+
+    return _finishNode(node, NodeType.propertyKw);
+  }
+
+  Node _parseScriptNameStatement(Node node) {
+    _goNext();
+
+    if (_type != NodeType.name) {
+      throw UnexpectedTokenException(pos: _start);
+    }
+
+    node.id = _parseIdent();
+    node.extendsDeclaration = _parseExtends();
+    node.flags = _parseScriptNameFlags();
+
+    return _finishNode(node, NodeType.scriptNameKw);
+  }
+
+  List<Node> _parseScriptNameFlags() {
+    final flags = <Node>[];
+
+    while (true) {
+      final node = _startNode();
+
+      if (_hasNewLineBetweenLastToken() ||
+          (_type != NodeType.conditionalKw && _type != NodeType.hiddenKw)) {
+        break;
+      }
+
+      _goNext();
+
+      flags.add(_finishNode(node, _type));
+    }
+
+    return flags;
+  }
+
+  Node? _parseExtends() {
+    final node = _startNode();
+
+    if (_type != NodeType.extendsKw) {
+      return null;
+    }
+
+    _goNext();
+
+    if (_hasNewLineBetweenLastToken()) {
+      throw ScriptnameException(pos: _start);
+    }
+
+    node.extendedType = _parseIdent();
+
+    return _finishNode(node, NodeType.extendsKw);
+  }
+
+  Node _parseVariableStatement({required Node node, required String kind}) {
+    _goNext();
+    _parseVariable(node: node, kind: kind);
+
+    return _finishNode(node, NodeType.variable);
+  }
+
+  Node _parseVariable({required Node node, required String kind}) {
+    node.kind = kind;
+
+    final declaration = _startNode();
+
+    _parseVariableId(node: declaration);
+
+    if (_eat(NodeType.equal)) {
+      declaration.init = _parseMaybeAssign();
+    } else if (declaration.id?.type != NodeType.id) {
+      // TODO: error unexpected
+
+      throw Exception();
+    }
+
+    node.declaration = _finishNode(
+      declaration,
+      NodeType.variableDeclaration,
+    );
+
+    return node;
+  }
+
+  Node _parseVariableId({required Node node}) {
+    node.id = _parseBindingAtom();
+
+    return node;
+  }
+
+  Node _parseExpressionStatement({required Node node, required Node expr}) {
+    node.expression = expr;
+
+    return _finishNode(node, NodeType.expressionStatement);
   }
 
   Node _parseIfStatement(Node node, {NodeType? context}) {
@@ -281,15 +278,15 @@ class Tree {
           )
         : null;
 
-    return _finishNode(node, NodeType.ifKw, null);
+    return _finishNode(node, NodeType.ifKw);
   }
 
   Node _parseParenExpression() {
-    _expectOrNot(NodeType.parenL);
+    _expect(NodeType.parenL);
 
     final val = _parseExpression();
 
-    _expectOrNot(NodeType.parenR);
+    _expect(NodeType.parenR);
 
     return val;
   }
@@ -306,7 +303,7 @@ class Tree {
     _parseFunctionParams(node);
     _parseFunctionBody(node);
 
-    return node;
+    return _finishNode(node, NodeType.functionKw);
   }
 
   void _parseFunctionBody(Node node) {
@@ -317,8 +314,15 @@ class Tree {
     final node = usedNode ?? _startNode();
 
     node.type = type;
+    final closeType = _close(type);
 
-    while (_type != _close(type)) {
+    if (_type == NodeType.eof) {
+      // TODO: error missing end
+
+      throw Exception();
+    }
+
+    while (_type != closeType) {
       final statement = _parseStatement();
 
       node.body.add(statement);
@@ -326,7 +330,7 @@ class Tree {
 
     _goNext();
 
-    return _finishNode(node, NodeType.block, null);
+    return _finishNode(node, NodeType.block);
   }
 
   Node _parseExpression() {
@@ -349,7 +353,7 @@ class Tree {
     node.left = left;
     node.right = _parseMaybeAssign();
 
-    return _finishNode(node, NodeType.assign, null);
+    return _finishNode(node, NodeType.assign);
   }
 
   Node _parseMaybeAssign() {
@@ -407,7 +411,9 @@ class Tree {
     node.right = right;
 
     return _finishNode(
-        node, logical ? NodeType.logical : NodeType.binary, null);
+      node,
+      logical ? NodeType.logical : NodeType.binary,
+    );
   }
 
   Node _parseMaybeUnary() {
@@ -431,8 +437,18 @@ class Tree {
         node = _startNode();
         _goNext();
 
-        return _finishNode(node, NodeType.parentKw, null);
+        return _finishNode(
+          node,
+          NodeType.parentKw,
+        );
+      case NodeType.selfKw:
+        node = _startNode();
+        _goNext();
 
+        return _finishNode(
+          node,
+          NodeType.selfKw,
+        );
       case NodeType.name:
         return _parseIdent();
 
@@ -453,15 +469,44 @@ class Tree {
 
         _goNext();
 
-        return _finishNode(node, NodeType.literal, null);
+        return _finishNode(
+          node,
+          NodeType.literal,
+        );
       case NodeType.newKw:
         return _parseNew();
       case NodeType.importKw:
         return _parseImport();
       default:
+        node = _startNode();
+        final startType = _type;
+        _goNext();
+
+        if (_type == NodeType.propertyKw) {
+          node = _parseProperty(node);
+        }
+
+        _goNext();
+
+        return _finishNode(node, node.type ?? NodeType.literal);
+
         // TODO: unexpected I think
         throw Exception();
     }
+  }
+
+  Node _parseProperty(Node node) {
+    _goNext();
+
+    if (_hasNewLineBetweenLastToken()) {
+      throw UnexpectedTokenException(pos: _pos);
+    }
+
+    node.name = _value;
+
+    _goNext();
+
+    return _finishNode(node, NodeType.propertyKw);
   }
 
   Node _parseImport() {
@@ -478,9 +523,17 @@ class Tree {
     final imported = _startNode();
     imported.name = _value;
 
-    node.body.add(_finishNode(imported, _type, null));
+    node.body.add(
+      _finishNode(
+        imported,
+        _type,
+      ),
+    );
 
-    return _finishNode(node, NodeType.importKw, null);
+    return _finishNode(
+      node,
+      NodeType.importKw,
+    );
   }
 
   Node _parseNew() {
@@ -517,7 +570,10 @@ class Tree {
 
     node.arguments = [nodeSize];
 
-    return _finishNode(node, NodeType.newKw, null);
+    return _finishNode(
+      node,
+      NodeType.newKw,
+    );
   }
 
   Node _parseSubsripts(Node base, int startPos) {
@@ -547,8 +603,16 @@ class Tree {
 
       node.computed = computed;
 
-      base = _finishNode(node, NodeType.member, null);
+      base = _finishNode(
+        node,
+        NodeType.member,
+      );
     }
+
+    // TODO: maybe here for variable/property parse ?
+    // Variable = deux NodeType.name qui s'enchaîne
+    // Property = un name + property + name + flags?
+    // Utiliser Map<String, dynamic> en alias au lieu de Node class ou voir alternative
 
     return base;
   }
@@ -560,20 +624,10 @@ class Tree {
 
     _goNext();
 
-    return _finishNode(node, NodeType.literal, null);
-  }
-
-  bool _isSimpleParamList(Node node) {
-    // TODO: type params
-    final list = node.params;
-
-    for (var i = 0; i < list.length; i++) {
-      final param = list[i];
-
-      if (param.type != NodeType.id) return false;
-    }
-
-    return true;
+    return _finishNode(
+      node,
+      NodeType.literal,
+    );
   }
 
   void _parseFunctionParams(Node node) {
@@ -585,19 +639,17 @@ class Tree {
     final elements = [];
     var first = true;
 
-    while (!_eat(_close(type))) {
-      if (!_eat(NodeType.parenR)) {
-        if (first) {
-          first = false;
-        } else {
-          _expect(NodeType.comma);
-          // TODO: end this
-        }
-
-        final elem = _parseMaybeDefault(_start, null);
-
-        elements.add(elem);
+    while (!_eat(type)) {
+      if (first) {
+        first = false;
+      } else {
+        _expect(NodeType.comma);
+        // TODO: end this
       }
+
+      final elem = _parseMaybeDefault(_start, null);
+
+      elements.add(elem);
     }
 
     return elements;
@@ -635,17 +687,19 @@ class Tree {
     }
 
     _goNext();
-    _finishNode(node, NodeType.id, null);
 
-    return node;
+    return _finishNode(
+      node,
+      NodeType.id,
+    );
   }
 
   void _nextToken() {
-    _pos += _skipSpace();
+    _pos = _skipSpace();
     _start = _pos;
 
     if (_pos >= _content.length) {
-      _finishToken(NodeType.eof, null);
+      return _finishToken(NodeType.eof, null);
     }
 
     return _readToken(_fullCodeUnitAtPos());
@@ -668,11 +722,13 @@ class Tree {
     _context.update(prevType);
   }
 
-  Node _finishNode(Node node, NodeType type, int? pos) {
+  Node _finishNode(Node node, NodeType type, {int? pos}) {
     final usedPos = pos ?? _lastTokenEnd;
 
     node.type = type;
     node.end = usedPos;
+
+    _lastNode = node;
 
     return node;
   }
@@ -704,16 +760,20 @@ class Tree {
 
     var type = NodeType.name;
 
-    if (_keywords.hasMatch(word)) {
-      type = keywordsMap[word] ?? type;
+    if (_firstRead && word.toLowerCase() != 'scriptname') {
+      throw ScriptnameException(pos: _pos);
     }
 
+    if (_keywords.hasMatch(word)) {
+      type = keywordsMap[word.toLowerCase()] ?? type;
+    }
+
+    _firstRead = false;
     _finishToken(type, word);
   }
 
   String _readWord1() {
     var chunkStart = _pos;
-    _containsEscape = false;
 
     while (_pos < _content.length) {
       final ch = _fullCodeUnitAtPos();
@@ -788,8 +848,8 @@ class Tree {
     // TODO: error unexpected char
   }
 
-  int _fullCodeUnitAtPos() {
-    final code = _current;
+  int _fullCodeUnitAtPos({int? pos}) {
+    final code = _currentCodeUnit(pos: pos ?? _pos);
 
     if (code < 0xd7ff /* 55295 */ || code >= 0xe000 /* 57344 */) {
       return code;
@@ -805,7 +865,7 @@ class Tree {
 
     loop:
     while (pos < _content.length) {
-      final ch = _current;
+      final ch = _currentCodeUnit(pos: pos);
 
       switch (ch) {
         case $space:
@@ -824,17 +884,17 @@ class Tree {
           if (_next == $slash) {
             final newPos = _skipBlockComment(pos: pos);
 
-            pos += newPos;
+            pos = newPos;
           } else {
             final newPos = _skipLineComment(pos: pos, skip: 2);
 
-            pos += newPos;
+            pos = newPos;
           }
           break;
         case $open_brace:
           final newPos = _skipDocComment(pos: pos);
 
-          pos += newPos;
+          pos = newPos;
           break;
         default:
           if (ch > 8 && ch < 14) {
@@ -988,12 +1048,12 @@ class Tree {
       // TODO: error invalid number
     }
 
-    var next = _current;
+    var next = _currentCodeUnit();
 
     if (next == $dot) {
       ++_pos;
       _readInt(10, null);
-      next = _current;
+      next = _currentCodeUnit();
     }
 
     if (next == $E || next == $e) {
@@ -1028,7 +1088,7 @@ class Tree {
         throw Exception();
       }
 
-      final ch = _current;
+      final ch = _currentCodeUnit();
 
       if (ch == $double_quote) {
         break;
@@ -1066,7 +1126,7 @@ class Tree {
         throw Exception();
       }
 
-      final ch = _current;
+      final ch = _currentCodeUnit();
 
       if (ch == $single_quote) {
         break;
@@ -1093,7 +1153,7 @@ class Tree {
     var total = 0;
 
     for (var i = 0; i < (len ?? double.infinity); ++i, ++_pos) {
-      final code = _current;
+      final code = _currentCodeUnit();
       int? val;
 
       if (code >= $a) {
@@ -1140,7 +1200,7 @@ class Tree {
       case $f:
         return '\f';
       case $cr:
-        if (_current == $lf) {
+        if (_currentCodeUnit() == $lf) {
           ++_pos;
         }
         continue lf;
@@ -1178,6 +1238,14 @@ class Tree {
     return keywordsMap.entries
         .firstWhere((element) => element.value == type)
         .key;
+  }
+
+  bool _hasNewLineBetweenLastToken() {
+    final contentBetweenExtendsAndNextToken =
+        _content.substring(_lastTokenEnd, _end);
+
+    return contentBetweenExtendsAndNextToken.codeUnits.contains($lf) ||
+        contentBetweenExtendsAndNextToken.codeUnits.contains($cr);
   }
 
   NodeType _close(NodeType type) {
