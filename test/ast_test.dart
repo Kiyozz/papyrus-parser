@@ -1,4 +1,6 @@
 import 'package:papyrus_parser/papyrus_parser.dart';
+import 'package:papyrus_parser/src/ast/node.dart';
+import 'package:papyrus_parser/src/ast/types.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -12,13 +14,13 @@ void main() {
 
       expect(program.body.isNotEmpty, isTrue);
 
-      Node scriptName = program.body.first;
+      ScriptName scriptName = program.body.first;
 
-      expect(scriptName, TypeMatcher<Node>());
+      expect(scriptName, TypeMatcher<ScriptName>());
       expect(scriptName.type, equals(NodeType.scriptNameKw));
       expect(scriptName.flags, hasLength(2));
       expect(
-        scriptName.extendsDeclaration?.extendedType?.name,
+        scriptName.extendsDeclaration?.extended?.name,
         equals('Form'),
       );
     });
@@ -32,9 +34,9 @@ void main() {
 
       expect(program.body.isNotEmpty, isTrue);
 
-      Node scriptName = program.body.first;
+      ScriptName scriptName = program.body.first;
 
-      expect(scriptName, TypeMatcher<Node>());
+      expect(scriptName, TypeMatcher<ScriptName>());
       expect(scriptName.type, equals(NodeType.scriptNameKw));
       expect(scriptName.flags, hasLength(1));
       expect(scriptName.extendsDeclaration, isNull);
@@ -57,15 +59,19 @@ void main() {
 
       expect(program.body, hasLength(2));
 
-      Node? functionBody = program.body[1];
+      FunctionStatement? functionBody = program.body[1];
 
       expect(functionBody?.id?.name, equals('toto'));
       expect(functionBody?.body, hasLength(1));
       expect(functionBody?.type, equals(NodeType.functionKw));
 
-      Node? functionBlock = functionBody?.body[0];
+      final functionBlock = functionBody?.body[0];
 
-      expect(functionBlock?.type, equals(NodeType.block));
+      expect(functionBlock, TypeMatcher<BlockStatement>());
+
+      final block = functionBlock as BlockStatement;
+
+      expect(block.type, equals(NodeType.block));
     });
 
     test('have name, one argument', () {
@@ -77,12 +83,16 @@ void main() {
 
       expect(program.body, hasLength(2));
 
-      Node? functionBody = program.body[1];
+      final body = program.body[1];
 
-      expect(functionBody?.id?.name, equals('toto'));
-      expect(functionBody?.body, hasLength(1));
-      expect(functionBody?.type, equals(NodeType.functionKw));
-      expect(functionBody?.params, hasLength(1));
+      expect(body, TypeMatcher<FunctionStatement>());
+
+      final functionBody = body as FunctionStatement;
+
+      expect(functionBody.id?.name, equals('toto'));
+      expect(functionBody.body, hasLength(1));
+      expect(functionBody.type, equals(NodeType.functionKw));
+      expect(functionBody.params, hasLength(1));
     });
   });
 

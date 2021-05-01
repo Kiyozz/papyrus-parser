@@ -1,3 +1,8 @@
+enum Flag {
+  conditional,
+  hidden,
+}
+
 enum NodeType {
   eof,
   name,
@@ -27,6 +32,7 @@ enum NodeType {
   propertyKw,
   returnKw,
   scriptNameKw,
+  flagKw,
   selfKw,
   stateKw,
   trueKw,
