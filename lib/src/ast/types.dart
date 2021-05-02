@@ -77,6 +77,7 @@ enum NodeType {
   readonlyKw,
   writeonlyKw,
   prefix,
+  callExpression
 }
 
 const keywordsMap = {

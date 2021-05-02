@@ -2,7 +2,6 @@ import 'types.dart';
 
 class Node {
   NodeType? type;
-  NodeType? endType;
   int start;
   int end;
 
@@ -82,10 +81,14 @@ class Node {
   Variable toVariable() {
     return Variable(start: start, end: end);
   }
+
+  CallExpression toCallExpression() {
+    return CallExpression(start: start, end: end);
+  }
 }
 
 class Program extends Node {
-  List<dynamic> body = [];
+  List<Node> body = [];
 
   @override
   NodeType? type = NodeType.program;
@@ -315,6 +318,20 @@ class Variable extends Node {
   Node? init;
 
   Variable({
+    required int start,
+    int end = 0,
+  }) : super(start: start, end: end);
+}
+
+class CallExpression extends Node {
+  @override
+  NodeType? type = NodeType.newKw;
+
+  Node? callee;
+
+  List<Node> arguments = [];
+
+  CallExpression({
     required int start,
     int end = 0,
   }) : super(start: start, end: end);

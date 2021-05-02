@@ -14,7 +14,11 @@ void main() {
 
       expect(program.body.isNotEmpty, isTrue);
 
-      ScriptName scriptName = program.body.first;
+      final firstNode = program.body.first;
+
+      expect(firstNode, TypeMatcher<ScriptName>());
+
+      final scriptName = firstNode as ScriptName;
 
       expect(scriptName, TypeMatcher<ScriptName>());
       expect(scriptName.type, equals(NodeType.scriptNameKw));
@@ -34,7 +38,11 @@ void main() {
 
       expect(program.body.isNotEmpty, isTrue);
 
-      ScriptName scriptName = program.body.first;
+      final firstNode = program.body.first;
+
+      expect(firstNode, TypeMatcher<ScriptName>());
+
+      final scriptName = firstNode as ScriptName;
 
       expect(scriptName, TypeMatcher<ScriptName>());
       expect(scriptName.type, equals(NodeType.scriptNameKw));
@@ -59,13 +67,17 @@ void main() {
 
       expect(program.body, hasLength(2));
 
-      FunctionStatement? functionBody = program.body[1];
+      final secondNode = program.body[1];
 
-      expect(functionBody?.id?.name, equals('toto'));
-      expect(functionBody?.body, hasLength(1));
-      expect(functionBody?.type, equals(NodeType.functionKw));
+      expect(secondNode, TypeMatcher<FunctionStatement>());
 
-      final functionBlock = functionBody?.body[0];
+      final functionBody = secondNode as FunctionStatement;
+
+      expect(functionBody.id?.name, equals('toto'));
+      expect(functionBody.body, hasLength(1));
+      expect(functionBody.type, equals(NodeType.functionKw));
+
+      final functionBlock = functionBody.body[0];
 
       expect(functionBlock, TypeMatcher<BlockStatement>());
 
@@ -116,5 +128,241 @@ void main() {
 
       expect(program.body, hasLength(2));
     });
+  });
+
+  group('If', () {
+    test('If with literal and no parens', () {
+      final tree = Tree(
+        content: 'If true\nEndIf',
+        throwWhenMissingScriptname: false,
+      );
+
+      final program = tree.parse();
+
+      expect(program.body, hasLength(1));
+
+      final ifStatement = program.body.first;
+
+      expect(ifStatement, TypeMatcher<IfStatement>());
+
+      ifStatement as IfStatement;
+
+      expect(ifStatement.test, isNotNull);
+
+      final ifTest = ifStatement.test as Node;
+
+      expect(ifTest.type, equals(NodeType.literal));
+      expect(ifStatement.consequent, isNotNull);
+
+      final consequent = ifStatement.consequent as Node;
+
+      expect(consequent.type, equals(NodeType.block));
+    });
+
+    test('If with literal and have parens', () {
+      final tree = Tree(
+        content: 'If (true)\nEndIf',
+        throwWhenMissingScriptname: false,
+      );
+
+      final program = tree.parse();
+
+      expect(program.body, hasLength(1));
+
+      final ifStatement = program.body.first;
+
+      expect(ifStatement, TypeMatcher<IfStatement>());
+
+      ifStatement as IfStatement;
+
+      expect(ifStatement.test, isNotNull);
+
+      final ifTest = ifStatement.test as Node;
+
+      expect(ifTest.type, equals(NodeType.literal));
+      expect(ifStatement.consequent, isNotNull);
+
+      final consequent = ifStatement.consequent as Node;
+
+      expect(consequent.type, equals(NodeType.block));
+    });
+
+    test('If with call and literal, with have parens', () {
+      final tree = Tree(
+        content: 'If (shouldStay() == true)\nEndIf',
+        throwWhenMissingScriptname: false,
+      );
+
+      final program = tree.parse();
+
+      expect(program.body, hasLength(1));
+
+      final ifStatement = program.body.first;
+
+      expect(ifStatement, TypeMatcher<IfStatement>());
+
+      ifStatement as IfStatement;
+
+      expect(ifStatement.test, isNotNull);
+
+      final ifTest = ifStatement.test as Node;
+
+      expect(ifTest, TypeMatcher<Logical>());
+
+      ifTest as Logical;
+
+      expect(ifTest.type, equals(NodeType.binary));
+      expect(ifTest.left, TypeMatcher<CallExpression>());
+      expect(ifTest.right, TypeMatcher<Literal>());
+      expect(ifStatement.consequent, isNotNull);
+
+      final consequent = ifStatement.consequent as Node;
+
+      expect(consequent.type, equals(NodeType.block));
+    });
+
+    test('If with call and call, with parens', () {
+      final tree = Tree(
+        content: 'If (shouldStay() == shouldStay())\nEndIf',
+        throwWhenMissingScriptname: false,
+      );
+
+      final program = tree.parse();
+
+      expect(program.body, hasLength(1));
+
+      final ifStatement = program.body.first;
+
+      expect(ifStatement, TypeMatcher<IfStatement>());
+
+      ifStatement as IfStatement;
+
+      expect(ifStatement.test, isNotNull);
+
+      final ifTest = ifStatement.test as Node;
+
+      expect(ifTest, TypeMatcher<Logical>());
+
+      ifTest as Logical;
+
+      expect(ifTest.type, equals(NodeType.binary));
+      expect(ifTest.left, TypeMatcher<CallExpression>());
+      expect(ifTest.right, TypeMatcher<CallExpression>());
+      expect(ifStatement.consequent, isNotNull);
+
+      final consequent = ifStatement.consequent as Node;
+
+      expect(consequent.type, equals(NodeType.block));
+    });
+
+    test('If with call params and call no params, with parens', () {
+      final tree = Tree(
+        content: 'If (shouldStay(true) == shouldStay())\nEndIf',
+        throwWhenMissingScriptname: false,
+      );
+
+      final program = tree.parse();
+
+      expect(program.body, hasLength(1));
+
+      final ifStatement = program.body.first;
+
+      expect(ifStatement, TypeMatcher<IfStatement>());
+
+      ifStatement as IfStatement;
+
+      expect(ifStatement.test, isNotNull);
+
+      final ifTest = ifStatement.test as Node;
+
+      expect(ifTest, TypeMatcher<Logical>());
+
+      ifTest as Logical;
+
+      expect(ifTest.type, equals(NodeType.binary));
+      expect(ifTest.left, TypeMatcher<CallExpression>());
+      expect((ifTest.left as CallExpression).arguments, hasLength(1));
+      expect(ifTest.right, TypeMatcher<CallExpression>());
+      expect(ifStatement.consequent, isNotNull);
+
+      final consequent = ifStatement.consequent as Node;
+
+      expect(consequent.type, equals(NodeType.block));
+    });
+
+    test(
+      'If with call params that is call, and call no params, with parens',
+      () {
+        final tree = Tree(
+          content: 'If (shouldStay(shouldStay()) == shouldStay())\nEndIf',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+
+        expect(program.body, hasLength(1));
+
+        final ifStatement = program.body.first;
+
+        expect(ifStatement, TypeMatcher<IfStatement>());
+
+        ifStatement as IfStatement;
+
+        expect(ifStatement.test, isNotNull);
+
+        final ifTest = ifStatement.test as Node;
+
+        expect(ifTest, TypeMatcher<Logical>());
+
+        ifTest as Logical;
+
+        expect(ifTest.type, equals(NodeType.binary));
+        expect(ifTest.left, TypeMatcher<CallExpression>());
+
+        final left = ifTest.left as CallExpression;
+
+        expect(left.arguments, hasLength(1));
+        expect(left.arguments[0], TypeMatcher<CallExpression>());
+        expect(ifTest.right, TypeMatcher<CallExpression>());
+        expect(ifStatement.consequent, isNotNull);
+
+        final consequent = ifStatement.consequent as Node;
+
+        expect(consequent.type, equals(NodeType.block));
+      },
+    );
+
+    test(
+      'If with literal, no parens, and calls in block',
+      () {
+        final tree = Tree(
+          content: 'If (true)\nShouldStay()\nShouldStay()\nEndIf',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+
+        expect(program.body, hasLength(1));
+
+        final ifStatement = program.body.first;
+
+        expect(ifStatement, TypeMatcher<IfStatement>());
+
+        ifStatement as IfStatement;
+
+        expect(ifStatement.test, isNotNull);
+
+        expect(ifStatement.consequent, isNotNull);
+
+        final consequent = ifStatement.consequent as Node;
+
+        expect(consequent, TypeMatcher<BlockStatement>());
+        expect(consequent.type, equals(NodeType.block));
+
+        consequent as BlockStatement;
+
+        expect(consequent.body, hasLength(2));
+      },
+    );
   });
 }
