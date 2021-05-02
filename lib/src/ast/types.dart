@@ -1,7 +1,9 @@
-enum Flag {
+enum ScriptNameFlag {
   conditional,
   hidden,
 }
+
+enum PropertyFlag { conditional, hidden, auto, autoReadonly }
 
 enum NodeType {
   eof,

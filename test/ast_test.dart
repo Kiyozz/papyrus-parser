@@ -108,25 +108,224 @@ void main() {
     });
   });
 
+  group('Variable', () {
+    test('simple variable string', () {
+      final tree = Tree(
+        content: 'String val',
+        throwWhenMissingScriptname: false,
+      );
+
+      final program = tree.parse();
+
+      expect(program.body, hasLength(1));
+
+      final variableDeclaration = program.body.first;
+
+      expect(variableDeclaration, TypeMatcher<VariableDeclaration>());
+
+      variableDeclaration as VariableDeclaration;
+
+      expect(variableDeclaration.variable, isNotNull);
+
+      final variable = variableDeclaration.variable as Variable;
+
+      expect(variable.init, isNull);
+      expect(variable.kind, equals('String'));
+      expect(variable.id, isNotNull);
+
+      final name = variable.id as Identifier;
+
+      expect(name.name, equals('val'));
+    });
+
+    test('simple variable string with init literal', () {
+      final tree = Tree(
+        content: 'String val = ""',
+        throwWhenMissingScriptname: false,
+      );
+
+      final program = tree.parse();
+
+      expect(program.body, hasLength(1));
+
+      final variableDeclaration = program.body.first;
+
+      expect(variableDeclaration, TypeMatcher<VariableDeclaration>());
+
+      variableDeclaration as VariableDeclaration;
+
+      expect(variableDeclaration.variable, isNotNull);
+
+      final variable = variableDeclaration.variable as Variable;
+
+      expect(variable.init, isNotNull);
+
+      final init = variable.init;
+
+      expect(init, TypeMatcher<Literal>());
+
+      init as Literal;
+
+      expect(init.value, '');
+      expect(variable.kind, equals('String'));
+      expect(variable.id, isNotNull);
+
+      final name = variable.id as Identifier;
+
+      expect(name.name, equals('val'));
+    });
+
+    test('simple variable string with init literal', () {
+      final tree = Tree(
+        content: 'bool val = shouldStay() == false',
+        throwWhenMissingScriptname: false,
+      );
+
+      final program = tree.parse();
+
+      expect(program.body, hasLength(1));
+
+      final variableDeclaration = program.body.first;
+
+      expect(variableDeclaration, TypeMatcher<VariableDeclaration>());
+
+      variableDeclaration as VariableDeclaration;
+
+      expect(variableDeclaration.variable, isNotNull);
+
+      final variable = variableDeclaration.variable as Variable;
+
+      expect(variable.init, isNotNull);
+
+      final init = variable.init;
+
+      expect(init, TypeMatcher<Logical>());
+
+      init as Logical;
+
+      expect(init.left, TypeMatcher<CallExpression>());
+      expect(init.operator, '==');
+      expect(init.right, TypeMatcher<Literal>());
+      expect(variable.kind, equals('bool'));
+      expect(variable.id, isNotNull);
+
+      final name = variable.id as Identifier;
+
+      expect(name.name, equals('val'));
+    });
+  });
+
   group('Property', () {
     test('auto property without default value', () {
       final tree = Tree(
-        content: 'Scriptname Test\nint property test auto',
+        content: 'int property test auto',
+        throwWhenMissingScriptname: false,
       );
 
       final program = tree.parse();
 
-      expect(program.body, hasLength(2));
+      expect(program.body, hasLength(1));
+
+      final property = program.body.first;
+
+      expect(property, TypeMatcher<PropertyDeclaration>());
+
+      property as PropertyDeclaration;
+
+      expect(property.flags, hasLength(1));
+
+      final id = property.id;
+
+      expect(id, TypeMatcher<Identifier>());
+
+      id as Identifier;
+
+      expect(id.name, equals('test'));
+      expect(property.kind, 'int');
+      expect(property.init, isNull);
     });
 
-    test('auto property with default value', () {
+    test('auto hidden property with default value', () {
       final tree = Tree(
-        content: 'Scriptname Test\nint property test = 1 auto',
+        content: 'int property test = 1 auto hidden',
+        throwWhenMissingScriptname: false,
       );
 
       final program = tree.parse();
 
-      expect(program.body, hasLength(2));
+      expect(program.body, hasLength(1));
+
+      final property = program.body.first;
+
+      expect(property, TypeMatcher<PropertyDeclaration>());
+
+      property as PropertyDeclaration;
+
+      expect(property.flags, hasLength(2));
+      expect(property.flags.first.flag, equals(PropertyFlag.auto));
+      expect(property.flags[1].flag, equals(PropertyFlag.hidden));
+
+      final id = property.id;
+
+      expect(id, TypeMatcher<Identifier>());
+
+      id as Identifier;
+
+      expect(id.name, equals('test'));
+      expect(property.kind, 'int');
+      expect(property.init, isNotNull);
+
+      final init = property.init;
+
+      expect(init, TypeMatcher<Literal>());
+
+      init as Literal;
+
+      expect(init.value, 1);
+    });
+
+    test('setter, getter property with default value', () {
+      final tree = Tree(
+        content: 'int property test = 1'
+            '  Function set(int value)'
+            '  EndFunction'
+            '  Function get()'
+            '  EndFunction'
+            'EndProperty',
+        throwWhenMissingScriptname: false,
+      );
+
+      final program = tree.parse();
+
+      expect(program.body, hasLength(1));
+
+      final property = program.body.first;
+
+      expect(property, TypeMatcher<PropertyDeclaration>());
+
+      property as PropertyDeclaration;
+
+      expect(property.flags, hasLength(2));
+      expect(property.flags.first.flag, equals(PropertyFlag.auto));
+      expect(property.flags[1].flag, equals(PropertyFlag.hidden));
+
+      final id = property.id;
+
+      expect(id, TypeMatcher<Identifier>());
+
+      id as Identifier;
+
+      expect(id.name, equals('test'));
+      expect(property.kind, 'int');
+      expect(property.init, isNotNull);
+
+      final init = property.init;
+
+      expect(init, TypeMatcher<Literal>());
+
+      init as Literal;
+
+      expect(init.value, 1);
     });
   });
 

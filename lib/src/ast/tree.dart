@@ -5,9 +5,14 @@ import 'types.dart';
 import 'node.dart';
 
 class Context {
-  void update(NodeType prevType) {
-    // Update the context
-  }
+  List<NodeType> tokens = [];
+  List<Node> nodes = [];
+
+  NodeType get lastToken => tokens.last;
+  Node get lastNode => nodes.last;
+
+  void addToken(NodeType type) => tokens.add(type);
+  void addNode(Node node) => nodes.add(node);
 }
 
 /// Parse an entire Papyrus source code
@@ -112,15 +117,28 @@ class Tree {
         return _parseFunctionStatement(node.toFunctionStatement());
       case NodeType.ifKw:
         return _parseIfStatement(node.toIfStatement());
-      case NodeType.propertyKw:
-        return _parsePropertyStatement(node);
-      case NodeType.variableDeclaration:
-        // TODO: get variable type
-        return _parseVariableDeclaration(
-          node: node.toVariableDeclaration(),
-          kind: '',
-        );
       default:
+        if (startType == NodeType.name) {
+          final potentialVariableType = _value;
+          final startPos = _start;
+
+          _goNext();
+
+          if (_type == NodeType.propertyKw) {
+            return _parsePropertyDeclaration(
+              kind: potentialVariableType,
+              start: startPos,
+            );
+          }
+
+          if (_type == NodeType.name) {
+            return _parseVariableDeclaration(
+              kind: potentialVariableType,
+              start: startPos,
+            );
+          }
+        }
+
         if (_isNewLine(_currentCodeUnit())) {
           return _parseBlock(node.toBlockStatement(), startType);
         }
@@ -135,10 +153,43 @@ class Tree {
     }
   }
 
-  Node _parsePropertyStatement(Node node) {
+  Node _parsePropertyDeclaration({
+    required int start,
+    required String kind,
+  }) {
+    final node = _startNodeAt(start).toPropertyDeclaration();
+
     _goNext();
 
-    return _finishNode(node, type: NodeType.propertyKw);
+    node.id = _parseBindingAtom();
+    node.kind = kind;
+
+    if (_eat(NodeType.assign)) {
+      node.init = _parseMaybeAssign();
+
+      if (node.init?.type != NodeType.literal) {
+        // TODO: error, property init should be constant
+
+        throw Exception();
+      }
+    }
+
+    while (_type == NodeType.hiddenKw ||
+        _type == NodeType.autoKw ||
+        _type == NodeType.conditionalKw ||
+        _type == NodeType.autoReadOnlyKw) {
+      print('toto');
+
+      final flagDeclaration = _startNode().toPropertyFlagDeclaration();
+
+      flagDeclaration.flag = flagDeclaration.flagFromType(_type);
+
+      node.flags.add(flagDeclaration);
+
+      _goNext();
+    }
+
+    return _finishNode(node);
   }
 
   Node _parseScriptNameStatement(ScriptName node) {
@@ -155,23 +206,19 @@ class Tree {
     return _finishNode(node);
   }
 
-  List<ScriptNameFlag> _parseScriptNameFlags() {
-    final flags = <ScriptNameFlag>[];
+  List<ScriptNameFlagDeclaration> _parseScriptNameFlags() {
+    final flags = <ScriptNameFlagDeclaration>[];
 
-    while (true) {
-      final node = _startNode().toScriptNameFlag();
-
-      if (_hasNewLineBetweenLastToken() ||
-          (_type != NodeType.conditionalKw && _type != NodeType.hiddenKw)) {
-        break;
-      }
+    while (_type == NodeType.conditionalKw || _type == NodeType.hiddenKw) {
+      final node = _startNode().toScriptNameFlagDeclaration();
 
       _goNext();
 
-      node.flag =
-          _type == NodeType.conditionalKw ? Flag.conditional : Flag.hidden;
+      node.flag = _type == NodeType.conditionalKw
+          ? ScriptNameFlag.conditional
+          : ScriptNameFlag.hidden;
 
-      flags.add(_finishNode(node) as ScriptNameFlag);
+      flags.add(_finishNode(node) as ScriptNameFlagDeclaration);
     }
 
     return flags;
@@ -196,26 +243,16 @@ class Tree {
   }
 
   VariableDeclaration _parseVariableDeclaration({
-    required VariableDeclaration node,
+    required int start,
     required String kind,
   }) {
-    _goNext();
-    _parseVariable(node: node, kind: kind);
-
-    return _finishNode(node) as VariableDeclaration;
-  }
-
-  Variable _parseVariable({
-    required VariableDeclaration node,
-    required String kind,
-  }) {
+    final node = _startNodeAt(start).toVariableDeclaration();
     final variable = _startNode().toVariable();
 
+    variable.id = _parseBindingAtom();
     variable.kind = kind;
 
-    _parseVariableId(node: variable);
-
-    if (_eat(NodeType.equal)) {
+    if (_eat(NodeType.assign)) {
       variable.init = _parseMaybeAssign();
     } else if (variable.id?.type != NodeType.id) {
       // TODO: error unexpected
@@ -225,13 +262,7 @@ class Tree {
 
     node.variable = _finishNode(variable) as Variable;
 
-    return _finishNode(node) as Variable;
-  }
-
-  Node _parseVariableId({required Variable node}) {
-    node.id = _parseBindingAtom();
-
-    return node;
+    return _finishNode(node) as VariableDeclaration;
   }
 
   Node _parseExpressionStatement({
@@ -689,7 +720,7 @@ class Tree {
     _type = type;
     _value = val;
 
-    _context.update(prevType);
+    _context.addToken(prevType);
   }
 
   Node _finishNode(Node node, {int? pos, NodeType? type}) {
@@ -698,7 +729,7 @@ class Tree {
     node.type = type ?? node.type;
     node.end = usedPos;
 
-    // _lastNode = node;
+    _context.addNode(node);
 
     return node;
   }

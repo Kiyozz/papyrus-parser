@@ -18,8 +18,8 @@ class Node {
     return ScriptName(start: start, end: end);
   }
 
-  ScriptNameFlag toScriptNameFlag() {
-    return ScriptNameFlag(start: start, end: end);
+  ScriptNameFlagDeclaration toScriptNameFlagDeclaration() {
+    return ScriptNameFlagDeclaration(start: start, end: end);
   }
 
   ExtendsDeclaration toExtendsDeclaration() {
@@ -85,6 +85,14 @@ class Node {
   CallExpression toCallExpression() {
     return CallExpression(start: start, end: end);
   }
+
+  PropertyDeclaration toPropertyDeclaration() {
+    return PropertyDeclaration(start: start, end: end);
+  }
+
+  PropertyFlagDeclaration toPropertyFlagDeclaration() {
+    return PropertyFlagDeclaration(start: start, end: end);
+  }
 }
 
 class Program extends Node {
@@ -102,7 +110,7 @@ class Program extends Node {
 class ScriptName extends Node {
   Node? id;
   ExtendsDeclaration? extendsDeclaration;
-  List<ScriptNameFlag> flags = [];
+  List<ScriptNameFlagDeclaration> flags = [];
 
   @override
   NodeType? type = NodeType.scriptNameKw;
@@ -113,13 +121,13 @@ class ScriptName extends Node {
   }) : super(start: start, end: end);
 }
 
-class ScriptNameFlag extends Node {
+class ScriptNameFlagDeclaration extends Node {
   @override
   NodeType? type = NodeType.flagKw;
 
-  Flag? flag;
+  ScriptNameFlag? flag;
 
-  ScriptNameFlag({
+  ScriptNameFlagDeclaration({
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
@@ -325,7 +333,7 @@ class Variable extends Node {
 
 class CallExpression extends Node {
   @override
-  NodeType? type = NodeType.newKw;
+  NodeType? type = NodeType.callExpression;
 
   Node? callee;
 
@@ -335,4 +343,73 @@ class CallExpression extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+}
+
+class PropertyDeclaration extends Node {
+  @override
+  NodeType? type = NodeType.propertyKw;
+
+  Identifier? id;
+  Node? init;
+  String? kind;
+  List<PropertyFlagDeclaration> flags = [];
+
+  PropertyDeclaration({
+    required int start,
+    int end = 0,
+  }) : super(start: start, end: end);
+
+  PropertyFullDeclaration toPropertyFullDeclaration() {
+    return PropertyFullDeclaration(start: start, end: end)
+      ..flags = flags
+      ..id = id
+      ..init = init
+      ..kind = kind;
+  }
+}
+
+class PropertyFullDeclaration extends Node {
+  @override
+  NodeType? type = NodeType.propertyKw;
+
+  Identifier? id;
+  Node? init;
+  String? kind;
+  List<PropertyFlagDeclaration> flags = [];
+  FunctionStatement? getter;
+  FunctionStatement? setter;
+
+  PropertyFullDeclaration({
+    required int start,
+    int end = 0,
+  }) : super(start: start, end: end);
+}
+
+class PropertyFlagDeclaration extends Node {
+  @override
+  NodeType? type = NodeType.flagKw;
+
+  PropertyFlag? flag;
+
+  PropertyFlagDeclaration({
+    required int start,
+    int end = 0,
+  }) : super(start: start, end: end);
+
+  PropertyFlag flagFromType(NodeType type) {
+    switch (type) {
+      case NodeType.conditionalKw:
+        return PropertyFlag.conditional;
+      case NodeType.autoKw:
+        return PropertyFlag.auto;
+      case NodeType.autoReadOnlyKw:
+        return PropertyFlag.autoReadonly;
+      case NodeType.hiddenKw:
+        return PropertyFlag.hidden;
+      default:
+        // TODO: error, unexpected flag
+
+        throw Exception();
+    }
+  }
 }
