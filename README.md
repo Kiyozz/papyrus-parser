@@ -1,4 +1,3 @@
-A simple command-line application.
+# Papyrus parser
 
-Created from templates made available by Stagehand under a BSD-style
-[license](https://github.com/dart-lang/stagehand/blob/master/LICENSE).
+# WORK IN PROGRESS
