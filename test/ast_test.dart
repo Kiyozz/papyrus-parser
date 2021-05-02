@@ -175,7 +175,7 @@ void main() {
       expect(name.name, equals('val'));
     });
 
-    test('simple variable string with init literal', () {
+    test('simple variable string with init logical call and literal', () {
       final tree = Tree(
         content: 'bool val = shouldStay() == false',
         throwWhenMissingScriptname: false,
@@ -286,11 +286,11 @@ void main() {
 
     test('setter, getter property with default value', () {
       final tree = Tree(
-        content: 'int property test = 1'
-            '  Function set(int value)'
-            '  EndFunction'
-            '  Function get()'
-            '  EndFunction'
+        content: 'int property test = 1\n'
+            '  Function set(int value)\n'
+            '  EndFunction\n'
+            '  Function get()\n'
+            '  EndFunction\n'
             'EndProperty',
         throwWhenMissingScriptname: false,
       );
@@ -326,6 +326,111 @@ void main() {
       init as Literal;
 
       expect(init.value, 1);
+    });
+  });
+
+  group('Return', () {
+    test('function returns literal', () {
+      final tree = Tree(
+        content: 'Function test()\n'
+            '  Return true\n'
+            'EndFunction',
+        throwWhenMissingScriptname: false,
+      );
+
+      final program = tree.parse();
+      expect(program.body, hasLength(1));
+      final functionStatements = (program.body.first as FunctionStatement).body;
+      expect(functionStatements, hasLength(1));
+      expect(functionStatements.first, TypeMatcher<BlockStatement>());
+      final block = functionStatements.first as BlockStatement;
+      expect(block.body, hasLength(1));
+      final returnStatement = block.body.first;
+      expect(returnStatement, TypeMatcher<ReturnStatement>());
+      returnStatement as ReturnStatement;
+      expect(returnStatement.argument, TypeMatcher<Literal>());
+      final argument = returnStatement.argument as Literal;
+      expect(argument.value, true);
+    });
+
+    test('function returns nothing', () {
+      final tree = Tree(
+        content: 'Function test()\n'
+            '  Return\n'
+            'EndFunction',
+        throwWhenMissingScriptname: false,
+      );
+
+      final program = tree.parse();
+      expect(program.body, hasLength(1));
+      final functionStatements = (program.body.first as FunctionStatement).body;
+      expect(functionStatements, hasLength(1));
+      expect(functionStatements.first, TypeMatcher<BlockStatement>());
+      final block = functionStatements.first as BlockStatement;
+      expect(block.body, hasLength(1));
+      final returnStatement = block.body.first;
+      expect(returnStatement, TypeMatcher<ReturnStatement>());
+      returnStatement as ReturnStatement;
+      expect(returnStatement.argument, isNull);
+    });
+
+    test('function returns call', () {
+      final tree = Tree(
+        content: 'Function test()\n'
+            '  Return shouldStay()\n'
+            'EndFunction',
+        throwWhenMissingScriptname: false,
+      );
+
+      final program = tree.parse();
+      expect(program.body, hasLength(1));
+      final functionStatements = (program.body.first as FunctionStatement).body;
+      expect(functionStatements, hasLength(1));
+      expect(functionStatements.first, TypeMatcher<BlockStatement>());
+      final block = functionStatements.first as BlockStatement;
+      expect(block.body, hasLength(1));
+      final returnStatement = block.body.first;
+      expect(returnStatement, TypeMatcher<ReturnStatement>());
+      returnStatement as ReturnStatement;
+      expect(returnStatement.argument, TypeMatcher<CallExpression>());
+      final argument = returnStatement.argument as CallExpression;
+      expect(argument.callee, TypeMatcher<Identifier>());
+      final callee = argument.callee as Identifier;
+      expect(callee.name, equals('shouldStay'));
+    });
+
+    test('function returns call and call', () {
+      final tree = Tree(
+        content: 'Function test()\n'
+            '  Return (shouldStay() && shouldStay())\n'
+            'EndFunction',
+        throwWhenMissingScriptname: false,
+      );
+
+      final program = tree.parse();
+      expect(program.body, hasLength(1));
+      final functionStatements = (program.body.first as FunctionStatement).body;
+      expect(functionStatements, hasLength(1));
+      expect(functionStatements.first, TypeMatcher<BlockStatement>());
+      final block = functionStatements.first as BlockStatement;
+      expect(block.body, hasLength(1));
+      final returnStatement = block.body.first;
+      expect(returnStatement, TypeMatcher<ReturnStatement>());
+      returnStatement as ReturnStatement;
+      expect(returnStatement.argument, TypeMatcher<Logical>());
+      final argument = returnStatement.argument as Logical;
+      final left = argument.left;
+      final right = argument.right;
+      expect(left, TypeMatcher<CallExpression>());
+      expect(right, TypeMatcher<CallExpression>());
+      left as CallExpression;
+      right as CallExpression;
+      expect(left.callee, TypeMatcher<Identifier>());
+      final lCallee = left.callee as Identifier;
+      expect(lCallee.name, equals('shouldStay'));
+      expect(right.callee, TypeMatcher<Identifier>());
+      final rCallee = left.callee as Identifier;
+      expect(rCallee.name, equals('shouldStay'));
     });
   });
 
@@ -535,7 +640,10 @@ void main() {
       'If with literal, no parens, and calls in block',
       () {
         final tree = Tree(
-          content: 'If (true)\nShouldStay()\nShouldStay()\nEndIf',
+          content: 'If (true)'
+              '  ShouldStay()\n'
+              '  ShouldStay()\n'
+              'EndIf',
           throwWhenMissingScriptname: false,
         );
 

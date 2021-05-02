@@ -71,6 +71,7 @@ class Tree {
         _throwWhenMissingScriptname = throwWhenMissingScriptname;
 
   Program parse() {
+    // TODO: return statement parse
     final program = _startNode().toProgram();
 
     _nextToken();
@@ -117,12 +118,18 @@ class Tree {
         return _parseFunctionStatement(node.toFunctionStatement());
       case NodeType.ifKw:
         return _parseIfStatement(node.toIfStatement());
+      case NodeType.returnKw:
+        return _parseReturnStatement(node.toReturnStatement());
       default:
         if (startType == NodeType.name) {
           final potentialVariableType = _value;
           final startPos = _start;
 
           _goNext();
+
+          if (_type == NodeType.parenL) {
+            return _parseSubscripts(node, startPos);
+          }
 
           if (_type == NodeType.propertyKw) {
             return _parsePropertyDeclaration(
@@ -153,11 +160,28 @@ class Tree {
     }
   }
 
+  Node _parseReturnStatement(ReturnStatement node) {
+    _shouldSkipParens = true;
+    _goNext();
+    _shouldSkipParens = false;
+    final foundParens = _foundParens;
+
+    if (!_hasNewLineBetweenLastToken()) {
+      node.argument = _parseExpression();
+    }
+
+    if (foundParens) {
+      _goNext();
+    }
+
+    return _finishNode(node);
+  }
+
   Node _parsePropertyDeclaration({
     required int start,
     required String kind,
   }) {
-    final node = _startNodeAt(start).toPropertyDeclaration();
+    var node = _startNodeAt(start).toPropertyDeclaration();
 
     _goNext();
 
@@ -178,8 +202,6 @@ class Tree {
         _type == NodeType.autoKw ||
         _type == NodeType.conditionalKw ||
         _type == NodeType.autoReadOnlyKw) {
-      print('toto');
-
       final flagDeclaration = _startNode().toPropertyFlagDeclaration();
 
       flagDeclaration.flag = flagDeclaration.flagFromType(_type);
@@ -187,6 +209,14 @@ class Tree {
       node.flags.add(flagDeclaration);
 
       _goNext();
+    }
+
+    if (_hasNewLineBetweenLastToken() &&
+        RegExp(r'endproperty', caseSensitive: false)
+            .hasMatch(_content.substring(_start))) {
+      print('end property');
+
+      node = node.toPropertyFullDeclaration();
     }
 
     return _finishNode(node);
@@ -576,7 +606,7 @@ class Tree {
       final exprList = _parseExprList(close: NodeType.parenR);
 
       final exprNode = _startNodeAt(startPos).toCallExpression();
-      exprNode.callee = base;
+      exprNode.callee = _finishNode(base);
       exprNode.arguments = exprList;
 
       base = _finishNode(exprNode, type: NodeType.callExpression);

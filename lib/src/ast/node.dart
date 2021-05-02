@@ -93,6 +93,10 @@ class Node {
   PropertyFlagDeclaration toPropertyFlagDeclaration() {
     return PropertyFlagDeclaration(start: start, end: end);
   }
+
+  ReturnStatement toReturnStatement() {
+    return ReturnStatement(start: start, end: end);
+  }
 }
 
 class Program extends Node {
@@ -366,16 +370,11 @@ class PropertyDeclaration extends Node {
       ..init = init
       ..kind = kind;
   }
+
+  bool get isFull => this is PropertyFullDeclaration;
 }
 
-class PropertyFullDeclaration extends Node {
-  @override
-  NodeType? type = NodeType.propertyKw;
-
-  Identifier? id;
-  Node? init;
-  String? kind;
-  List<PropertyFlagDeclaration> flags = [];
+class PropertyFullDeclaration extends PropertyDeclaration {
   FunctionStatement? getter;
   FunctionStatement? setter;
 
@@ -412,4 +411,16 @@ class PropertyFlagDeclaration extends Node {
         throw Exception();
     }
   }
+}
+
+class ReturnStatement extends Node {
+  Node? argument;
+
+  @override
+  NodeType? type = NodeType.returnKw;
+
+  ReturnStatement({
+    required int start,
+    int end = 0,
+  }) : super(start: start, end: end);
 }
