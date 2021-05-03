@@ -1,21 +1,41 @@
-class ScriptnameException {
-  final int _pos;
+class NodeException {
+  final int _start;
+  final int _end;
 
-  ScriptnameException({required int pos}) : _pos = pos;
+  final int? _pos;
+
+  NodeException({
+    required int start,
+    required int end,
+    int? pos,
+  })  : _start = start,
+        _end = end,
+        _pos = pos;
+}
+
+class ScriptNameException extends NodeException {
+  ScriptNameException({
+    required int start,
+    required int end,
+    int? pos,
+  }) : super(start: start, end: end, pos: pos);
 
   @override
   String toString() {
-    return 'Unexpected token at $_pos. Scriptname statement is not complete';
+    return 'ScriptNameException: Unexpected token at $_pos. ScriptName statement is not complete';
   }
 }
 
-class UnexpectedTokenException {
-  final int _pos;
+class UnexpectedTokenException extends NodeException {
   final String? _expected;
 
-  UnexpectedTokenException({required int pos, String? expected})
-      : _pos = pos,
-        _expected = expected;
+  UnexpectedTokenException({
+    required int start,
+    required int end,
+    int? pos,
+    String? expected,
+  })  : _expected = expected,
+        super(start: start, end: end, pos: pos);
 
   @override
   String toString() {
@@ -25,6 +45,40 @@ class UnexpectedTokenException {
       buffer.write(' Expected $_expected');
     }
 
-    return buffer.toString();
+    return 'UnexpectedTokenException: ${buffer.toString()}';
+  }
+}
+
+class PropertyException extends NodeException {
+  final String _message;
+
+  PropertyException(
+    String message, {
+    required int start,
+    required int end,
+    int? pos,
+  })  : _message = message,
+        super(start: start, end: end, pos: pos);
+
+  @override
+  String toString() {
+    return 'PropertyException: $_message';
+  }
+}
+
+class BlockStatementException extends NodeException {
+  final String _message;
+
+  BlockStatementException(
+    String message, {
+    required int start,
+    required int end,
+    int? pos,
+  })  : _message = message,
+        super(start: start, end: end, pos: pos);
+
+  @override
+  String toString() {
+    return 'BlockStatementException: $_message';
   }
 }

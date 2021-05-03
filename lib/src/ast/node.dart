@@ -42,8 +42,8 @@ class Node {
     return BlockStatement(start: start, end: end);
   }
 
-  Assign toAssign() {
-    return Assign(start: start, end: end);
+  AssignExpression toAssign() {
+    return AssignExpression(start: start, end: end);
   }
 
   Literal toLiteral() {
@@ -58,8 +58,8 @@ class Node {
     return Identifier(start: start, end: end);
   }
 
-  Logical toLogical() {
-    return Logical(start: start, end: end);
+  LogicalExpression toLogical() {
+    return LogicalExpression(start: start, end: end);
   }
 
   Import toImport() {
@@ -164,8 +164,6 @@ class ExpressionStatement extends Node {
 class IfStatement extends Node {
   @override
   NodeType? type = NodeType.ifKw;
-
-  @override
   NodeType? endType = NodeType.endIfKw;
 
   Node? test;
@@ -181,13 +179,13 @@ class IfStatement extends Node {
 class FunctionStatement extends Node {
   @override
   NodeType? type = NodeType.functionKw;
-
-  @override
   NodeType? endType = NodeType.endFunctionKw;
 
   Identifier? id;
   List<Node> body = [];
   List<Node> params = [];
+
+  String kind = '';
 
   FunctionStatement({
     required int start,
@@ -207,14 +205,14 @@ class BlockStatement extends Node {
   }) : super(start: start, end: end);
 }
 
-class Assign extends Node {
+class AssignExpression extends Node {
   @override
   NodeType? type = NodeType.assign;
 
   Node? left;
   Node? right;
 
-  Assign({
+  AssignExpression({
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
@@ -257,12 +255,12 @@ class Identifier extends Node {
   }) : super(start: start, end: end);
 }
 
-class Logical extends Node {
+class LogicalExpression extends Node {
   Node? left;
   Node? right;
   String operator = '';
 
-  Logical({
+  LogicalExpression({
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
@@ -372,6 +370,20 @@ class PropertyDeclaration extends Node {
   }
 
   bool get isFull => this is PropertyFullDeclaration;
+
+  bool get isAutoOrAutoReadonly => isAuto || isAutoReadonly;
+  bool get isAuto => hasFlag(PropertyFlag.auto);
+  bool get isAutoReadonly => hasFlag(PropertyFlag.autoReadonly);
+  bool get isConditional => hasFlag(PropertyFlag.conditional);
+  bool get isHidden {
+    final hasHidden = hasFlag(PropertyFlag.hidden);
+
+    return hasHidden || (!isAuto && !isAutoReadonly && !isConditional);
+  }
+
+  bool hasFlag(PropertyFlag propertyFlag) {
+    return flags.any((flag) => flag.flag == propertyFlag);
+  }
 }
 
 class PropertyFullDeclaration extends PropertyDeclaration {
