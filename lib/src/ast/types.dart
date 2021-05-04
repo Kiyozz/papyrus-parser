@@ -4,6 +4,8 @@ enum PropertyFlag { conditional, hidden, auto, autoReadonly }
 
 enum FunctionFlag { global, native }
 
+enum StateFlag { auto }
+
 enum NodeType {
   eof,
   name,

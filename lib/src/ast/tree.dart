@@ -70,6 +70,8 @@ class Tree {
 
   int get _next => _content.codeUnitAt(_pos + 1);
 
+  ScriptName? _scriptName;
+
   Tree({
     required String content,
     bool throwWhenMissingScriptname = true,
@@ -77,7 +79,6 @@ class Tree {
         _throwWhenMissingScriptname = throwWhenMissingScriptname;
 
   Program parse() {
-    // TODO: return statement parse
     final program = _startNode().toProgram();
 
     _nextToken();
@@ -132,12 +133,29 @@ class Tree {
         return _parseIfStatement(node.toIfStatement());
       case NodeType.whileKw:
         return _parseWhileStatement(node.toWhileStatement());
+      case NodeType.stateKw:
+        return _parseStateStatement(node.toStateStatement());
       case NodeType.returnKw:
         return _parseReturnStatement(node.toReturnStatement());
       default:
+        final startPos = _start;
+
+        if (_type == NodeType.autoKw) {
+          final autoType = _type;
+
+          _goNext();
+
+          if (_type == NodeType.stateKw) {
+            return _parseStateStatement(
+              node.toStateStatement(),
+              startPos: startPos,
+              flag: autoType,
+            );
+          }
+        }
+
         if (startType == NodeType.name) {
           final potentialVariableType = _value;
-          final startPos = _start;
 
           _goNext();
 
@@ -195,6 +213,33 @@ class Tree {
           expr: expr,
         );
     }
+  }
+
+  Node _parseStateStatement(
+    StateStatement node, {
+    NodeType? flag,
+    int? startPos,
+  }) {
+    node.flag = flag == NodeType.autoKw ? StateFlag.auto : null;
+
+    if (node.isAuto && startPos != null) {
+      node.start = startPos;
+    }
+
+    _goNext();
+
+    node.id = _parseIdentifier();
+    node.body = _parseBlock(null, NodeType.stateKw);
+
+    if (!node.isValid) {
+      throw StateStatementException(
+        'StateStatement can only contains FunctionStatement or EventStatement',
+        start: node.start,
+        end: _lastTokenEnd,
+      );
+    }
+
+    return _finishNode(node);
   }
 
   CastExpression _parseCastExpression(
@@ -259,6 +304,14 @@ class Tree {
         _type == NodeType.autoReadOnlyKw) {
       final flagDeclaration = _startNode().toPropertyFlagDeclaration();
 
+      if ((_scriptName?.isConditional ?? false) && !node.isConditional) {
+        throw PropertyException(
+          'A Conditional Property must appears in ScriptName flagged Conditional',
+          start: node.start,
+          end: _lastTokenEnd,
+        );
+      }
+
       flagDeclaration.flag = flagDeclaration.flagFromType(_type);
 
       node.flags.add(flagDeclaration);
@@ -270,7 +323,7 @@ class Tree {
       throw PropertyException(
         'A AutoReadOnly should have a constant init declaration',
         start: node.start,
-        end: node.end,
+        end: _lastTokenEnd,
       );
     }
 
@@ -278,7 +331,7 @@ class Tree {
       throw PropertyException(
         'A Conditional Property must be Auto or AutoReadOnly',
         start: node.start,
-        end: node.end,
+        end: _lastTokenEnd,
       );
     }
 
@@ -286,7 +339,7 @@ class Tree {
       throw PropertyException(
         'A Conditional Property must have an constant init declaration',
         start: node.start,
-        end: node.end,
+        end: _lastTokenEnd,
       );
     }
 
@@ -299,7 +352,7 @@ class Tree {
         throw PropertyException(
           'Full property "$name" must be closed by "endproperty"',
           start: node.start,
-          end: node.end,
+          end: _lastTokenEnd,
         );
       }
 
@@ -316,12 +369,10 @@ class Tree {
       );
 
       if (block.body.isEmpty) {
-        // TODO: error missing setter or getter
-
         throw PropertyException(
           'A full property must have a getter and/or a setter',
           start: node.start,
-          end: node.end,
+          end: _lastTokenEnd,
         );
       }
 
@@ -336,7 +387,11 @@ class Tree {
         if (setter.params.isEmpty && setter.params.length > 1) {
           // TODO: a setter expects only one param of the property's type
 
-          throw Exception();
+          throw PropertyException(
+            'Setter should have one parameter with the same type as the Property',
+            start: node.start,
+            end: _lastTokenEnd,
+          );
         }
       }
 
@@ -346,7 +401,11 @@ class Tree {
         if (getter.kind != node.kind) {
           // TODO: getter return type, do not equals the property type
 
-          throw Exception();
+          throw PropertyException(
+            'Getter should return the same type as the Property',
+            start: node.start,
+            end: _lastTokenEnd,
+          );
         }
 
         if (getter.params.isNotEmpty) {
@@ -377,7 +436,11 @@ class Tree {
     node.extendsDeclaration = _parseExtends();
     node.flags = _parseScriptNameFlags();
 
-    return _finishNode(node);
+    final scriptName = _finishNode(node);
+
+    _scriptName = scriptName;
+
+    return node;
   }
 
   List<ScriptNameFlagDeclaration> _parseScriptNameFlags() {
@@ -1044,7 +1107,7 @@ class Tree {
     if (_throwWhenMissingScriptname &&
         _firstRead &&
         word.toLowerCase() != 'scriptname') {
-      throw ScriptNameException(start: _start, end: _end, pos: _pos);
+      throw ScriptNameException(start: _start, end: _lastTokenEnd, pos: _pos);
     }
 
     if (_keywords.hasMatch(word)) {

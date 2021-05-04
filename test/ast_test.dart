@@ -138,7 +138,7 @@ void main() {
 
         final program = tree.parse();
         final function = program.body.first as FunctionStatement;
-        expect(function.body, hasLength(0));
+        expect(function.body, isEmpty);
         expect(function.flags, hasLength(2));
         final flags = function.flags;
         final globalFlag = flags.first;
@@ -412,6 +412,21 @@ void main() {
         );
 
         expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
+      },
+    );
+
+    test(
+      'Conditional not in a Conditional ScriptName should throws an error',
+      () {
+        final tree = Tree(
+          content: 'ScriptName Test\n\n'
+              'Int Property test Auto Conditional',
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<PropertyException>()),
+        );
       },
     );
   });
@@ -875,7 +890,7 @@ void main() {
     );
   });
 
-  group('While', () {
+  group('WhileStatement', () {
     test(
       'should have one Literal and one empty BlockStatement',
       () {
@@ -917,6 +932,63 @@ void main() {
     );
   });
 
-  // TODO: conditional property must be in scriptname conditional
-  // TODO: conditional variable must be in scriptname conditional
+  group('StateStatement', () {
+    test(
+      'should have a Auto flag and an empty BlockStatement',
+      () {
+        final tree = Tree(
+          content: 'Auto State Test\n'
+              'EndState',
+          throwWhenMissingScriptname: false,
+        );
+
+        final state = tree.parse().body.first as StateStatement;
+        expect(state.flag, equals(StateFlag.auto));
+        final id = state.id as Identifier;
+        expect(id.name, equals('Test'));
+        expect(state.body?.body, isEmpty);
+      },
+    );
+
+    test(
+      'should have a FunctionStatement in a BlockStatement',
+      () {
+        final tree = Tree(
+          content: 'State Test\n'
+              '  Int Function test()\n'
+              '  EndFunction\n'
+              'EndState',
+          throwWhenMissingScriptname: false,
+        );
+
+        final state = tree.parse().body.first as StateStatement;
+        final id = state.id as Identifier;
+        expect(id.name, equals('Test'));
+        expect(state.body?.body, hasLength(1));
+        final functionStatement = state.body?.body.first as FunctionStatement;
+        expect(functionStatement.id?.name, equals('test'));
+        expect(functionStatement.kind, equals('Int'));
+      },
+    );
+
+    test(
+      'that have a StateStatement in the BlockStatement should throws an error',
+      () {
+        final tree = Tree(
+          content: 'State Test\n'
+              '  State T\n'
+              '  EndState\n'
+              'EndState',
+          throwWhenMissingScriptname: false,
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<StateStatementException>()),
+        );
+      },
+    );
+  });
+
+  // TODO: EventStatement
 }

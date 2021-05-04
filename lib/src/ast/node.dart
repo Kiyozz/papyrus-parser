@@ -114,6 +114,10 @@ class Node {
   WhileStatement toWhileStatement() {
     return WhileStatement(start: start, end: end);
   }
+
+  StateStatement toStateStatement() {
+    return StateStatement(start: start, end: end);
+  }
 }
 
 class Program extends Node {
@@ -135,6 +139,13 @@ class ScriptName extends Node {
 
   @override
   NodeType? type = NodeType.scriptNameKw;
+
+  bool get isConditional {
+    final flag = flags
+        .firstWhereOrNull((elem) => elem.flag == ScriptNameFlag.conditional);
+
+    return flag != null;
+  }
 
   ScriptName({
     required int start,
@@ -526,6 +537,39 @@ class WhileStatement extends Node {
   Node? consequent;
 
   WhileStatement({
+    required int start,
+    int end = 0,
+  }) : super(start: start, end: end);
+}
+
+class StateStatement extends Node {
+  @override
+  NodeType? type = NodeType.stateKw;
+  NodeType? endType = NodeType.endStateKw;
+  Identifier? id;
+  StateFlag? flag;
+  BlockStatement? body;
+
+  bool get isAuto => flag == StateFlag.auto;
+
+  bool get isValid {
+    final body = this.body;
+    if (body == null) return true;
+
+    final elements = body.body;
+
+    if (elements.isEmpty) return true;
+
+    final state = elements.where((elem) {
+      return elem is! FunctionStatement /* && elem is EventStatement */;
+    });
+
+    if (state.isEmpty) return true;
+
+    return false;
+  }
+
+  StateStatement({
     required int start,
     int end = 0,
   }) : super(start: start, end: end);

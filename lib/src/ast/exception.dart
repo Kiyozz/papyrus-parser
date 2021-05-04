@@ -1,7 +1,6 @@
 abstract class NodeException {
   final int _start;
   final int _end;
-
   final int? _pos;
 
   NodeException({
@@ -22,7 +21,7 @@ class ScriptNameException extends NodeException {
 
   @override
   String toString() {
-    return 'ScriptNameException: Unexpected token at $_pos. ScriptName statement is not complete';
+    return 'ScriptNameException: [$_start:$_end] Unexpected token at $_pos. ScriptName statement is not complete';
   }
 }
 
@@ -45,7 +44,7 @@ class UnexpectedTokenException extends NodeException {
       buffer.write(' Expected $_expected');
     }
 
-    return 'UnexpectedTokenException: ${buffer.toString()}';
+    return 'UnexpectedTokenException: [$_start:$_end] ${buffer.toString()}';
   }
 }
 
@@ -62,7 +61,7 @@ class PropertyException extends NodeException {
 
   @override
   String toString() {
-    return 'PropertyException: $_message';
+    return 'PropertyException: [$_start:$_end] $_message';
   }
 }
 
@@ -79,7 +78,7 @@ class BlockStatementException extends NodeException {
 
   @override
   String toString() {
-    return 'BlockStatementException: $_message';
+    return 'BlockStatementException: [$_start:$_end] $_message';
   }
 }
 
@@ -96,6 +95,23 @@ class FunctionFlagException extends NodeException {
 
   @override
   String toString() {
-    return 'FunctionFlagException: unexpected flag $_flag';
+    return 'FunctionFlagException: [$_start:$_end] unexpected flag $_flag';
+  }
+}
+
+class StateStatementException extends NodeException {
+  final String _message;
+
+  StateStatementException(
+    String message, {
+    required int start,
+    required int end,
+    int? pos,
+  })  : _message = message,
+        super(start: start, end: end, pos: pos);
+
+  @override
+  String toString() {
+    return 'StateStatementException: [$_start:$_end] $_message';
   }
 }
