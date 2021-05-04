@@ -1,4 +1,4 @@
-class NodeException {
+abstract class NodeException {
   final int _start;
   final int _end;
 

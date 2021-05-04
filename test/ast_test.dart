@@ -12,14 +12,13 @@ void main() {
 
         final program = tree.parse();
         expect(program.body.isNotEmpty, isTrue);
-        final firstNode = program.body.first;
-        expect(firstNode, TypeMatcher<ScriptName>());
-        final scriptName = firstNode as ScriptName;
-        expect(scriptName, TypeMatcher<ScriptName>());
+        final scriptName = program.body.first as ScriptName;
         expect(scriptName.type, equals(NodeType.scriptNameKw));
         expect(scriptName.flags, hasLength(2));
+        final extendsDeclaration =
+            scriptName.extendsDeclaration as ExtendsDeclaration;
         expect(
-          scriptName.extendsDeclaration?.extended?.name,
+          extendsDeclaration.extended?.name,
           equals('Form'),
         );
       },
@@ -34,10 +33,7 @@ void main() {
 
         final program = tree.parse();
         expect(program.body.isNotEmpty, isTrue);
-        final firstNode = program.body.first;
-        expect(firstNode, TypeMatcher<ScriptName>());
-        final scriptName = firstNode as ScriptName;
-        expect(scriptName, TypeMatcher<ScriptName>());
+        final scriptName = program.body.first as ScriptName;
         expect(scriptName.type, equals(NodeType.scriptNameKw));
         expect(scriptName.flags, hasLength(1));
         expect(scriptName.extendsDeclaration, isNull);
@@ -65,15 +61,11 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final secondNode = program.body.first;
-        expect(secondNode, TypeMatcher<FunctionStatement>());
-        final functionBody = secondNode as FunctionStatement;
+        final functionBody = program.body.first as FunctionStatement;
         expect(functionBody.id?.name, equals('toto'));
         expect(functionBody.body, hasLength(1));
         expect(functionBody.type, equals(NodeType.functionKw));
-        final functionBlock = functionBody.body[0];
-        expect(functionBlock, TypeMatcher<BlockStatement>());
-        final block = functionBlock as BlockStatement;
+        final block = functionBody.body[0] as BlockStatement;
         expect(block.type, equals(NodeType.block));
       },
     );
@@ -88,18 +80,13 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final body = program.body.first;
-        expect(body, TypeMatcher<FunctionStatement>());
-        body as FunctionStatement;
+        final body = program.body.first as FunctionStatement;
         expect(body.id?.name, equals('toto'));
         expect(body.body, hasLength(1));
         expect(body.type, equals(NodeType.functionKw));
         expect(body.params, hasLength(1));
-        final param = body.params.first;
-        expect(param, TypeMatcher<VariableDeclaration>());
-        final variable = (param as VariableDeclaration).variable;
-        expect(variable, TypeMatcher<Variable>());
-        variable as Variable;
+        final param = body.params.first as VariableDeclaration;
+        final variable = param.variable as Variable;
         expect(variable.kind, 'String');
         expect(variable.init, isNull);
         expect(variable.id?.name, 'n');
@@ -117,13 +104,11 @@ void main() {
         final program = tree.parse();
         expect(program.body, hasLength(1));
         final body = program.body.first as FunctionStatement;
-        final param = body.params.first;
-        final variable = (param as VariableDeclaration).variable as Variable;
+        final param = body.params.first as VariableDeclaration;
+        final variable = param.variable as Variable;
         expect(variable.kind, equals('String'));
         expect(variable.id?.name, equals('n'));
-        final init = variable.init;
-        expect(init, TypeMatcher<Literal>());
-        init as Literal;
+        final init = variable.init as Literal;
         expect(init.value, equals(''));
       },
     );
@@ -197,6 +182,23 @@ void main() {
         );
       },
     );
+
+    test(
+      'should have VariableDeclaration with init declaration in first parameter',
+      () {
+        final tree = Tree(
+          content: 'Function toto(String n = "") global\n'
+              'EndFunction',
+          throwWhenMissingScriptname: false,
+        );
+
+        final functionStatement = tree.parse().body.first as FunctionStatement;
+        final variableDeclaration =
+            functionStatement.params.first as VariableDeclaration;
+        final variable = variableDeclaration.variable as Variable;
+        expect(variable.init, TypeMatcher<Literal>());
+      },
+    );
   });
 
   group('VariableDeclaration', () {
@@ -210,14 +212,10 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final variableDeclaration = program.body.first;
-        expect(variableDeclaration, TypeMatcher<VariableDeclaration>());
-        variableDeclaration as VariableDeclaration;
-        expect(variableDeclaration.variable, isNotNull);
+        final variableDeclaration = program.body.first as VariableDeclaration;
         final variable = variableDeclaration.variable as Variable;
         expect(variable.init, isNull);
         expect(variable.kind, equals('String'));
-        expect(variable.id, isNotNull);
         final name = variable.id as Identifier;
         expect(name.name, equals('val'));
       },
@@ -233,18 +231,11 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final variableDeclaration = program.body.first;
-        expect(variableDeclaration, TypeMatcher<VariableDeclaration>());
-        variableDeclaration as VariableDeclaration;
-        expect(variableDeclaration.variable, isNotNull);
+        final variableDeclaration = program.body.first as VariableDeclaration;
         final variable = variableDeclaration.variable as Variable;
-        expect(variable.init, isNotNull);
-        final init = variable.init;
-        expect(init, TypeMatcher<Literal>());
-        init as Literal;
+        final init = variable.init as Literal;
         expect(init.value, '');
         expect(variable.kind, equals('String'));
-        expect(variable.id, isNotNull);
         final name = variable.id as Identifier;
         expect(name.name, equals('val'));
       },
@@ -260,23 +251,14 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final variableDeclaration = program.body.first;
-        expect(variableDeclaration, TypeMatcher<VariableDeclaration>());
-        variableDeclaration as VariableDeclaration;
-        expect(variableDeclaration.variable, isNotNull);
+        final variableDeclaration = program.body.first as VariableDeclaration;
         final variable = variableDeclaration.variable as Variable;
-        expect(variable.init, isNotNull);
-        final init = variable.init;
-        expect(init, TypeMatcher<LogicalExpression>());
-        init as LogicalExpression;
+        final init = variable.init as LogicalExpression;
         expect(init.left, TypeMatcher<CallExpression>());
         expect(init.operator, '==');
         expect(init.right, TypeMatcher<Literal>());
         expect(variable.kind, equals('Bool'));
-        expect(variable.id, isNotNull);
-
         final name = variable.id as Identifier;
-
         expect(name.name, equals('val'));
       },
     );
@@ -290,25 +272,13 @@ void main() {
         );
 
         final program = tree.parse();
-        final variableDeclaration = program.body.first;
-        expect(variableDeclaration, TypeMatcher<VariableDeclaration>());
-        variableDeclaration as VariableDeclaration;
-        final variable = variableDeclaration.variable;
-        expect(variable, isNotNull);
-        variable as Variable;
-        final cast = variable.init;
-        expect(cast, TypeMatcher<CastExpression>());
-        cast as CastExpression;
-        final call = cast.id;
-        expect(call, TypeMatcher<CallExpression>());
-        call as CallExpression;
-        final callee = call.callee;
-        expect(callee, TypeMatcher<Identifier>());
-        callee as Identifier;
+        final variableDeclaration = program.body.first as VariableDeclaration;
+        final variable = variableDeclaration.variable as Variable;
+        final cast = variable.init as CastExpression;
+        final call = cast.id as CallExpression;
+        final callee = call.callee as Identifier;
         expect(callee.name, equals('toto'));
-        final kind = cast.kind;
-        expect(kind, TypeMatcher<Identifier>());
-        kind as Identifier;
+        final kind = cast.kind as Identifier;
         expect(kind.name, equals('String'));
       },
     );
@@ -325,13 +295,9 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final property = program.body.first;
-        expect(property, TypeMatcher<PropertyDeclaration>());
-        property as PropertyDeclaration;
+        final property = program.body.first as PropertyDeclaration;
         expect(property.flags, hasLength(1));
-        final id = property.id;
-        expect(id, TypeMatcher<Identifier>());
-        id as Identifier;
+        final id = property.id as Identifier;
         expect(id.name, equals('test'));
         expect(property.kind, 'Int');
         expect(property.init, isNull);
@@ -348,20 +314,13 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final property = program.body.first;
-        expect(property, TypeMatcher<PropertyDeclaration>());
-        property as PropertyDeclaration;
+        final property = program.body.first as PropertyDeclaration;
         expect(property.flags, hasLength(1));
         expect(property.flags.first.flag, equals(PropertyFlag.autoReadonly));
-        final id = property.id;
-        expect(id, TypeMatcher<Identifier>());
-        id as Identifier;
+        final id = property.id as Identifier;
         expect(id.name, equals('test'));
         expect(property.kind, 'Int');
-        expect(property.init, isNotNull);
-        final init = property.init;
-        expect(init, TypeMatcher<Literal>());
-        init as Literal;
+        final init = property.init as Literal;
         expect(init.value, 1);
       },
     );
@@ -381,20 +340,13 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final property = program.body.first;
-        expect(property, TypeMatcher<PropertyFullDeclaration>());
-        property as PropertyFullDeclaration;
+        final property = program.body.first as PropertyFullDeclaration;
         expect(property.flags, hasLength(1));
         expect(property.flags.first.flag, equals(PropertyFlag.hidden));
-        final id = property.id;
-        expect(id, TypeMatcher<Identifier>());
-        id as Identifier;
+        final id = property.id as Identifier;
         expect(id.name, equals('test'));
         expect(property.kind, 'Int');
-        expect(property.init, isNotNull);
-        final init = property.init;
-        expect(init, TypeMatcher<Literal>());
-        init as Literal;
+        final init = property.init as Literal;
         expect(init.value, 1);
         expect(init.raw, '1');
       },
@@ -480,13 +432,9 @@ void main() {
         final functionStatements =
             (program.body.first as FunctionStatement).body;
         expect(functionStatements, hasLength(1));
-        expect(functionStatements.first, TypeMatcher<BlockStatement>());
         final block = functionStatements.first as BlockStatement;
         expect(block.body, hasLength(1));
-        final returnStatement = block.body.first;
-        expect(returnStatement, TypeMatcher<ReturnStatement>());
-        returnStatement as ReturnStatement;
-        expect(returnStatement.argument, TypeMatcher<Literal>());
+        final returnStatement = block.body.first as ReturnStatement;
         final argument = returnStatement.argument as Literal;
         expect(argument.value, true);
       },
@@ -507,12 +455,9 @@ void main() {
         final functionStatements =
             (program.body.first as FunctionStatement).body;
         expect(functionStatements, hasLength(1));
-        expect(functionStatements.first, TypeMatcher<BlockStatement>());
         final block = functionStatements.first as BlockStatement;
         expect(block.body, hasLength(1));
-        final returnStatement = block.body.first;
-        expect(returnStatement, TypeMatcher<ReturnStatement>());
-        returnStatement as ReturnStatement;
+        final returnStatement = block.body.first as ReturnStatement;
         expect(returnStatement.argument, isNull);
       },
     );
@@ -532,15 +477,10 @@ void main() {
         final functionStatements =
             (program.body.first as FunctionStatement).body;
         expect(functionStatements, hasLength(1));
-        expect(functionStatements.first, TypeMatcher<BlockStatement>());
         final block = functionStatements.first as BlockStatement;
         expect(block.body, hasLength(1));
-        final returnStatement = block.body.first;
-        expect(returnStatement, TypeMatcher<ReturnStatement>());
-        returnStatement as ReturnStatement;
-        expect(returnStatement.argument, TypeMatcher<CallExpression>());
+        final returnStatement = block.body.first as ReturnStatement;
         final argument = returnStatement.argument as CallExpression;
-        expect(argument.callee, TypeMatcher<Identifier>());
         final callee = argument.callee as Identifier;
         expect(callee.name, equals('shouldStay'));
       },
@@ -561,25 +501,15 @@ void main() {
         final functionStatements =
             (program.body.first as FunctionStatement).body;
         expect(functionStatements, hasLength(1));
-        expect(functionStatements.first, TypeMatcher<BlockStatement>());
         final block = functionStatements.first as BlockStatement;
         expect(block.body, hasLength(1));
-        final returnStatement = block.body.first;
-        expect(returnStatement, TypeMatcher<ReturnStatement>());
-        returnStatement as ReturnStatement;
-        expect(returnStatement.argument, TypeMatcher<LogicalExpression>());
+        final returnStatement = block.body.first as ReturnStatement;
         final argument = returnStatement.argument as LogicalExpression;
-        final left = argument.left;
-        final right = argument.right;
-        expect(left, TypeMatcher<CallExpression>());
-        expect(right, TypeMatcher<CallExpression>());
-        left as CallExpression;
-        right as CallExpression;
-        expect(left.callee, TypeMatcher<Identifier>());
+        final left = argument.left as CallExpression;
+        final right = argument.right as CallExpression;
         final lCallee = left.callee as Identifier;
         expect(lCallee.name, equals('shouldStay'));
-        expect(right.callee, TypeMatcher<Identifier>());
-        final rCallee = left.callee as Identifier;
+        final rCallee = right.callee as Identifier;
         expect(rCallee.name, equals('shouldStay'));
       },
     );
@@ -596,14 +526,9 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final ifStatement = program.body.first;
-        expect(ifStatement, TypeMatcher<IfStatement>());
-        ifStatement as IfStatement;
-        expect(ifStatement.test, isNotNull);
-        final ifTest = ifStatement.test as Node;
-        expect(ifTest.type, equals(NodeType.literal));
-        expect(ifStatement.consequent, isNotNull);
-        final consequent = ifStatement.consequent as Node;
+        final ifStatement = program.body.first as IfStatement;
+        expect(ifStatement.test, TypeMatcher<Literal>());
+        final consequent = ifStatement.consequent as BlockStatement;
         expect(consequent.type, equals(NodeType.block));
       },
     );
@@ -618,14 +543,9 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final ifStatement = program.body.first;
-        expect(ifStatement, TypeMatcher<IfStatement>());
-        ifStatement as IfStatement;
-        expect(ifStatement.test, isNotNull);
-        final ifTest = ifStatement.test as Node;
-        expect(ifTest.type, equals(NodeType.literal));
-        expect(ifStatement.consequent, isNotNull);
-        final consequent = ifStatement.consequent as Node;
+        final ifStatement = program.body.first as IfStatement;
+        expect(ifStatement.test, TypeMatcher<Literal>());
+        final consequent = ifStatement.consequent as BlockStatement;
         expect(consequent.type, equals(NodeType.block));
       },
     );
@@ -641,18 +561,12 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final ifStatement = program.body.first;
-        expect(ifStatement, TypeMatcher<IfStatement>());
-        ifStatement as IfStatement;
-        expect(ifStatement.test, isNotNull);
-        final ifTest = ifStatement.test as Node;
-        expect(ifTest, TypeMatcher<LogicalExpression>());
-        ifTest as LogicalExpression;
+        final ifStatement = program.body.first as IfStatement;
+        final ifTest = ifStatement.test as LogicalExpression;
         expect(ifTest.type, equals(NodeType.binary));
         expect(ifTest.left, TypeMatcher<CallExpression>());
         expect(ifTest.right, TypeMatcher<Literal>());
-        expect(ifStatement.consequent, isNotNull);
-        final consequent = ifStatement.consequent as Node;
+        final consequent = ifStatement.consequent as BlockStatement;
         expect(consequent.type, equals(NodeType.block));
       },
     );
@@ -668,18 +582,12 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final ifStatement = program.body.first;
-        expect(ifStatement, TypeMatcher<IfStatement>());
-        ifStatement as IfStatement;
-        expect(ifStatement.test, isNotNull);
-        final ifTest = ifStatement.test as Node;
-        expect(ifTest, TypeMatcher<LogicalExpression>());
-        ifTest as LogicalExpression;
+        final ifStatement = program.body.first as IfStatement;
+        final ifTest = ifStatement.test as LogicalExpression;
         expect(ifTest.type, equals(NodeType.binary));
         expect(ifTest.left, TypeMatcher<CallExpression>());
         expect(ifTest.right, TypeMatcher<CallExpression>());
-        expect(ifStatement.consequent, isNotNull);
-        final consequent = ifStatement.consequent as Node;
+        final consequent = ifStatement.consequent as BlockStatement;
         expect(consequent.type, equals(NodeType.block));
       },
     );
@@ -695,19 +603,13 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final ifStatement = program.body.first;
-        expect(ifStatement, TypeMatcher<IfStatement>());
-        ifStatement as IfStatement;
-        expect(ifStatement.test, isNotNull);
-        final ifTest = ifStatement.test as Node;
-        expect(ifTest, TypeMatcher<LogicalExpression>());
-        ifTest as LogicalExpression;
+        final ifStatement = program.body.first as IfStatement;
+        final ifTest = ifStatement.test as LogicalExpression;
         expect(ifTest.type, equals(NodeType.binary));
-        expect(ifTest.left, TypeMatcher<CallExpression>());
-        expect((ifTest.left as CallExpression).arguments, hasLength(1));
+        final left = ifTest.left as CallExpression;
+        expect(left.arguments, hasLength(1));
         expect(ifTest.right, TypeMatcher<CallExpression>());
-        expect(ifStatement.consequent, isNotNull);
-        final consequent = ifStatement.consequent as Node;
+        final consequent = ifStatement.consequent as BlockStatement;
         expect(consequent.type, equals(NodeType.block));
       },
     );
@@ -723,21 +625,14 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final ifStatement = program.body.first;
-        expect(ifStatement, TypeMatcher<IfStatement>());
-        ifStatement as IfStatement;
-        expect(ifStatement.test, isNotNull);
-        final ifTest = ifStatement.test as Node;
-        expect(ifTest, TypeMatcher<LogicalExpression>());
-        ifTest as LogicalExpression;
+        final ifStatement = program.body.first as IfStatement;
+        final ifTest = ifStatement.test as LogicalExpression;
         expect(ifTest.type, equals(NodeType.binary));
-        expect(ifTest.left, TypeMatcher<CallExpression>());
         final left = ifTest.left as CallExpression;
         expect(left.arguments, hasLength(1));
         expect(left.arguments[0], TypeMatcher<CallExpression>());
         expect(ifTest.right, TypeMatcher<CallExpression>());
-        expect(ifStatement.consequent, isNotNull);
-        final consequent = ifStatement.consequent as Node;
+        final consequent = ifStatement.consequent as BlockStatement;
         expect(consequent.type, equals(NodeType.block));
       },
     );
@@ -755,15 +650,9 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final ifStatement = program.body.first;
-        expect(ifStatement, TypeMatcher<IfStatement>());
-        ifStatement as IfStatement;
+        final ifStatement = program.body.first as IfStatement;
         expect(ifStatement.test, isNotNull);
-        expect(ifStatement.consequent, isNotNull);
-        final consequent = ifStatement.consequent as Node;
-        expect(consequent, TypeMatcher<BlockStatement>());
-        expect(consequent.type, equals(NodeType.block));
-        consequent as BlockStatement;
+        final consequent = ifStatement.consequent as BlockStatement;
         expect(consequent.body, hasLength(2));
       },
     );
@@ -778,22 +667,12 @@ void main() {
         );
 
         final program = tree.parse();
-        final ifStatement = program.body.first;
-        expect(ifStatement, TypeMatcher<IfStatement>());
-        ifStatement as IfStatement;
-        final test = ifStatement.test;
-        expect(test, TypeMatcher<CastExpression>());
-        test as CastExpression;
-        final call = test.id;
-        expect(call, TypeMatcher<CallExpression>());
-        call as CallExpression;
-        final callee = call.callee;
-        expect(callee, TypeMatcher<Identifier>());
-        callee as Identifier;
+        final ifStatement = program.body.first as IfStatement;
+        final test = ifStatement.test as CastExpression;
+        final call = test.id as CallExpression;
+        final callee = call.callee as Identifier;
         expect(callee.name, equals('t'));
-        final kind = test.kind;
-        expect(kind, TypeMatcher<Identifier>());
-        kind as Identifier;
+        final kind = test.kind as Identifier;
         expect(kind.name, equals('String'));
       },
     );
@@ -808,41 +687,22 @@ void main() {
         );
 
         final program = tree.parse();
-        final ifStatement = program.body.first;
-        expect(ifStatement, TypeMatcher<IfStatement>());
-        ifStatement as IfStatement;
-        final test = ifStatement.test;
-        expect(test, TypeMatcher<LogicalExpression>());
-        test as LogicalExpression;
+        final ifStatement = program.body.first as IfStatement;
+        final test = ifStatement.test as LogicalExpression;
         expect(test.operator, equals('&&'));
-        final leftTest = test.left;
-        expect(leftTest, TypeMatcher<CastExpression>());
-        leftTest as CastExpression;
-        final call = leftTest.id;
-        expect(call, TypeMatcher<CallExpression>());
-        call as CallExpression;
-        final callee = call.callee;
-        expect(callee, TypeMatcher<Identifier>());
-        callee as Identifier;
+
+        final leftTest = test.left as CastExpression;
+        final call = leftTest.id as CallExpression;
+        final callee = call.callee as Identifier;
         expect(callee.name, equals('t'));
-        final kind = leftTest.kind;
-        expect(kind, TypeMatcher<Identifier>());
-        kind as Identifier;
+        final kind = leftTest.kind as Identifier;
         expect(kind.name, equals('String'));
 
-        final rightTest = test.right;
-        expect(rightTest, TypeMatcher<CastExpression>());
-        rightTest as CastExpression;
-        final rightCall = rightTest.id;
-        expect(rightCall, TypeMatcher<CallExpression>());
-        rightCall as CallExpression;
-        final rightCallee = rightCall.callee;
-        expect(rightCallee, TypeMatcher<Identifier>());
-        rightCallee as Identifier;
+        final rightTest = test.right as CastExpression;
+        final rightCall = rightTest.id as CallExpression;
+        final rightCallee = rightCall.callee as Identifier;
         expect(rightCallee.name, equals('a'));
-        final rightKind = rightTest.kind;
-        expect(rightKind, TypeMatcher<Identifier>());
-        rightKind as Identifier;
+        final rightKind = rightTest.kind as Identifier;
         expect(rightKind.name, equals('Int'));
       },
     );
@@ -857,30 +717,18 @@ void main() {
         );
 
         final program = tree.parse();
-        final ifStatement = program.body.first;
-        expect(ifStatement, TypeMatcher<IfStatement>());
-        ifStatement as IfStatement;
-        final test = ifStatement.test;
-        expect(test, TypeMatcher<LogicalExpression>());
-        test as LogicalExpression;
+        final ifStatement = program.body.first as IfStatement;
+        final test = ifStatement.test as LogicalExpression;
         expect(test.operator, equals('=='));
-        final call = test.left;
-        expect(call, TypeMatcher<CallExpression>());
-        call as CallExpression;
-        final callee = call.callee;
-        expect(callee, TypeMatcher<Identifier>());
-        callee as Identifier;
+        final call = test.left as CallExpression;
+        final callee = call.callee as Identifier;
         expect(callee.name, equals('t'));
 
-        final rightTest = test.right;
-        expect(rightTest, TypeMatcher<UnaryExpression>());
-        rightTest as UnaryExpression;
+        final rightTest = test.right as UnaryExpression;
         expect(rightTest.argument, TypeMatcher<Literal>());
         expect(rightTest.isPrefix, isTrue);
         expect(rightTest.operator, '-');
-        final rightLiteral = rightTest.argument;
-        expect(rightLiteral, TypeMatcher<Literal>());
-        rightLiteral as Literal;
+        final rightLiteral = rightTest.argument as Literal;
         expect(rightLiteral.value, equals(1));
       },
     );
@@ -896,22 +744,13 @@ void main() {
         );
 
         final program = tree.parse();
-        final call = program.body.first;
-        expect(call, TypeMatcher<CallExpression>());
-        call as CallExpression;
+        final call = program.body.first as CallExpression;
         expect(call.arguments, hasLength(2));
-        expect(call.callee, TypeMatcher<Identifier>());
         final callee = call.callee as Identifier;
         expect(callee.name, 'shouldAssign');
-        final positional = call.arguments.first;
-        final optional = call.arguments[1];
-        expect(positional, TypeMatcher<Literal>());
-        expect(optional, TypeMatcher<AssignExpression>());
-        positional as Literal;
+        final positional = call.arguments.first as Literal;
+        final optional = call.arguments[1] as AssignExpression;
         expect(positional.value, isFalse);
-        optional as AssignExpression;
-        expect(optional.left, TypeMatcher<Identifier>());
-        expect(optional.right, TypeMatcher<Literal>());
         final opLeft = optional.left as Identifier;
         final opRight = optional.right as Literal;
         expect(opLeft.name, equals('t'));
@@ -930,16 +769,10 @@ void main() {
         );
 
         final program = tree.parse();
-        final cast = program.body.first;
-        expect(cast, TypeMatcher<CastExpression>());
-        cast as CastExpression;
-        final id = cast.id;
-        expect(id, TypeMatcher<Identifier>());
-        id as Identifier;
+        final cast = program.body.first as CastExpression;
+        final id = cast.id as Identifier;
         expect(id.name, equals('toto'));
-        final kind = cast.kind;
-        expect(kind, TypeMatcher<Identifier>());
-        kind as Identifier;
+        final kind = cast.kind as Identifier;
         expect(kind.name, equals('String'));
       },
     );
@@ -953,19 +786,11 @@ void main() {
         );
 
         final program = tree.parse();
-        final cast = program.body.first;
-        expect(cast, TypeMatcher<CastExpression>());
-        cast as CastExpression;
-        final call = cast.id;
-        expect(call, TypeMatcher<CallExpression>());
-        call as CallExpression;
-        final callee = call.callee;
-        expect(callee, TypeMatcher<Identifier>());
-        callee as Identifier;
+        final cast = program.body.first as CastExpression;
+        final call = cast.id as CallExpression;
+        final callee = call.callee as Identifier;
         expect(callee.name, equals('toto'));
-        final kind = cast.kind;
-        expect(kind, TypeMatcher<Identifier>());
-        kind as Identifier;
+        final kind = cast.kind as Identifier;
         expect(kind.name, equals('String'));
       },
     );
@@ -984,10 +809,7 @@ void main() {
 
         final variableDeclaration = program.body.first as VariableDeclaration;
         final variable = variableDeclaration.variable as Variable;
-        final literal = variable.init;
-
-        expect(literal, TypeMatcher<Literal>());
-        literal as Literal;
+        final literal = variable.init as Literal;
         expect(literal.value, equals(0x0033FF));
         expect(literal.value, equals(13311));
         expect(literal.raw, equals('0x0033FF'));
@@ -1006,13 +828,9 @@ void main() {
 
         final variableDeclaration = program.body.first as VariableDeclaration;
         final variable = variableDeclaration.variable as Variable;
-        final expression = variable.init;
-        expect(expression, TypeMatcher<UnaryExpression>());
-        expression as UnaryExpression;
+        final expression = variable.init as UnaryExpression;
         expect(expression.operator, equals('-'));
-        final literal = expression.argument;
-        expect(literal, TypeMatcher<Literal>());
-        literal as Literal;
+        final literal = expression.argument as Literal;
         expect(literal.value, equals(1));
         expect(literal.raw, equals('1'));
       },
@@ -1030,21 +848,75 @@ void main() {
 
         final variableDeclaration = program.body.first as VariableDeclaration;
         final variable = variableDeclaration.variable as Variable;
-        final expression = variable.init;
-        expect(expression, TypeMatcher<UnaryExpression>());
-        expression as UnaryExpression;
+        final expression = variable.init as UnaryExpression;
         expect(expression.operator, equals('-'));
-        final literal = expression.argument;
-        expect(literal, TypeMatcher<Literal>());
-        literal as Literal;
+        final literal = expression.argument as Literal;
         expect(literal.value, equals(1.0));
         expect(literal.raw, equals('1.0'));
       },
     );
+
+    test(
+      'None should be parsed',
+      () {
+        final tree = Tree(
+          content: 'Actor t = None',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+
+        final variableDeclaration = program.body.first as VariableDeclaration;
+        final variable = variableDeclaration.variable as Variable;
+        final literal = variable.init as Literal;
+        expect(literal.value, equals(null));
+        expect(literal.raw, equals('None'));
+      },
+    );
   });
 
-  // TODO: none literal
-  // TODO: while
+  group('While', () {
+    test(
+      'should have one Literal and one empty BlockStatement',
+      () {
+        final tree = Tree(
+          content: 'While true\n'
+              'EndWhile',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+        final whileStatement = program.body.first as WhileStatement;
+        final test = whileStatement.test as Literal;
+        final consequent = whileStatement.consequent as BlockStatement;
+        expect(test.value, true);
+        expect(consequent.body, isEmpty);
+      },
+    );
+
+    test(
+      'should have one LogicalExpression with one CallExpression and UnaryExpression',
+      () {
+        final tree = Tree(
+          content: 'While call() == -1\n'
+              'EndWhile',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+        final whileStatement = program.body.first as WhileStatement;
+        final test = whileStatement.test as LogicalExpression;
+        final call = test.left as CallExpression;
+        final unary = test.right as UnaryExpression;
+        final callee = call.callee as Identifier;
+        final unaryArgument = unary.argument as Literal;
+        expect(callee.name, equals('call'));
+        expect(unaryArgument.value, equals(1));
+        expect(unary.operator, equals('-'));
+      },
+    );
+  });
+
   // TODO: conditional property must be in scriptname conditional
   // TODO: conditional variable must be in scriptname conditional
 }

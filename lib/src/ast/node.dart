@@ -47,7 +47,7 @@ class Node {
     return BlockStatement(start: start, end: end);
   }
 
-  AssignExpression toAssign() {
+  AssignExpression toAssignExpression() {
     return AssignExpression(start: start, end: end);
   }
 
@@ -109,6 +109,10 @@ class Node {
 
   UnaryExpression toUnaryExpression() {
     return UnaryExpression(start: start, end: end);
+  }
+
+  WhileStatement toWhileStatement() {
+    return WhileStatement(start: start, end: end);
   }
 }
 
@@ -508,6 +512,20 @@ class UnaryExpression extends Node {
   bool isPrefix = false;
 
   UnaryExpression({
+    required int start,
+    int end = 0,
+  }) : super(start: start, end: end);
+}
+
+class WhileStatement extends Node {
+  @override
+  NodeType? type = NodeType.whileKw;
+  NodeType? endType = NodeType.endWhileKw;
+
+  Node? test;
+  Node? consequent;
+
+  WhileStatement({
     required int start,
     int end = 0,
   }) : super(start: start, end: end);

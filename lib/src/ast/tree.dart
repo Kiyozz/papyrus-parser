@@ -130,6 +130,8 @@ class Tree {
         return _parseFunctionStatement(node.toFunctionStatement());
       case NodeType.ifKw:
         return _parseIfStatement(node.toIfStatement());
+      case NodeType.whileKw:
+        return _parseWhileStatement(node.toWhileStatement());
       case NodeType.returnKw:
         return _parseReturnStatement(node.toReturnStatement());
       default:
@@ -448,6 +450,23 @@ class Tree {
     return _finishNode(node);
   }
 
+  Node _parseWhileStatement(WhileStatement node) {
+    _shouldSkipParens = true;
+    _goNext();
+    _shouldSkipParens = false;
+    final foundParens = _foundParens;
+
+    node.test = _parseExpression();
+
+    if (foundParens) {
+      _goNext();
+    }
+
+    node.consequent = _parseBlock(null, NodeType.whileKw);
+
+    return _finishNode(node);
+  }
+
   Node _parseIfStatement(IfStatement node) {
     _shouldSkipParens = true;
     _goNext();
@@ -607,7 +626,7 @@ class Tree {
     final left = _parseExprOps();
 
     if (_type == NodeType.assign) {
-      final n = _startNode().toAssign();
+      final n = _startNode().toAssignExpression();
 
       n.left = left;
 
@@ -726,8 +745,8 @@ class Tree {
       case NodeType.falseKw:
       case NodeType.trueKw:
         node = _startNode().toLiteral()
-          ..value = _type == NodeType.noneKw ? 'None' : _type == NodeType.trueKw
-          ..raw = _keywordName(_type);
+          ..value = _type == NodeType.noneKw ? null : _type == NodeType.trueKw
+          ..raw = _content.substring(_start, _end);
 
         _goNext();
 
@@ -870,6 +889,7 @@ class Tree {
   Literal _parseLiteral(dynamic value) {
     final node = _startNode().toLiteral();
     node.value = value;
+
     node.raw = _content.substring(_start, _end);
 
     _goNext();
