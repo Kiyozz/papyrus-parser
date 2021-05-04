@@ -82,3 +82,20 @@ class BlockStatementException extends NodeException {
     return 'BlockStatementException: $_message';
   }
 }
+
+class FunctionFlagException extends NodeException {
+  final String _flag;
+
+  FunctionFlagException({
+    required String flag,
+    required int start,
+    required int end,
+    int? pos,
+  })  : _flag = flag,
+        super(start: start, end: end, pos: pos);
+
+  @override
+  String toString() {
+    return 'FunctionFlagException: unexpected flag $_flag';
+  }
+}

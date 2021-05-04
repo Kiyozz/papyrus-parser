@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 void main() {
   group('ScriptName', () {
     test(
-      'ScriptName should have a name, Extends a script, and have Hidden and Conditional flags',
+      'should have a name, Extends a script, and have Hidden and Conditional flags',
       () {
         final tree = Tree(
           content: 'ScriptName Test Extends Form Hidden Conditional',
@@ -26,7 +26,7 @@ void main() {
     );
 
     test(
-      'ScriptName should have a name and Hidden flag',
+      'should have a name and Hidden flag',
       () {
         final tree = Tree(
           content: 'ScriptName Test Hidden',
@@ -45,7 +45,7 @@ void main() {
     );
 
     test(
-      'Script without ScriptName should throws an error',
+      'without ScriptName should throws an error',
       () {
         final tree = Tree(content: 'function toto()\nendfunction');
 
@@ -54,9 +54,9 @@ void main() {
     );
   });
 
-  group('Function', () {
+  group('FunctionStatement', () {
     test(
-      'Function should have a name and no arguments',
+      'should have a name and no arguments',
       () {
         final tree = Tree(
           content: 'Function toto()\nEndFunction',
@@ -79,7 +79,7 @@ void main() {
     );
 
     test(
-      'Function should have a name and one argument without an init declaration',
+      'should have a name and one argument without an init declaration',
       () {
         final tree = Tree(
           content: 'Function toto(String n)\nEndFunction',
@@ -107,7 +107,7 @@ void main() {
     );
 
     test(
-      'Function should have a name, and one argument with an init declaration',
+      'should have a name, and one argument with an init declaration',
       () {
         final tree = Tree(
           content: 'Function toto(String n = "")\nEndFunction',
@@ -129,7 +129,7 @@ void main() {
     );
 
     test(
-      'Function without EndFunction should throws an error',
+      'without EndFunction should throws an error',
       () {
         final tree = Tree(
           content: 'Function toto(String n = "")\n',
@@ -142,11 +142,66 @@ void main() {
         );
       },
     );
+
+    test(
+      'should have Global and Native flags',
+      () {
+        final tree = Tree(
+          content: 'Function toto() Global Native',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+        final function = program.body.first as FunctionStatement;
+        expect(function.body, hasLength(0));
+        expect(function.flags, hasLength(2));
+        final flags = function.flags;
+        final globalFlag = flags.first;
+        final nativeFlag = flags[1];
+        expect(globalFlag.flag, FunctionFlag.global);
+        expect(nativeFlag.flag, FunctionFlag.native);
+      },
+    );
+
+    test(
+      'should have Global flag',
+      () {
+        final tree = Tree(
+          content: 'Function toto() Global\n'
+              'EndFunction',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+        final function = program.body.first as FunctionStatement;
+        expect(function.body, hasLength(1));
+        expect(function.flags, hasLength(1));
+        final flags = function.flags;
+        final globalFlag = flags.first;
+        expect(globalFlag.flag, FunctionFlag.global);
+      },
+    );
+
+    test(
+      'with an unknown flag should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Function toto() unknownFlag\n'
+              'EndFunction',
+          throwWhenMissingScriptname: false,
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<FunctionFlagException>()),
+        );
+      },
+    );
   });
 
-  group('Variable', () {
+  group('VariableDeclaration', () {
     test(
-      'Variable should not have an init declaration',
+      'should not have an init declaration',
       () {
         final tree = Tree(
           content: 'String val',
@@ -169,7 +224,7 @@ void main() {
     );
 
     test(
-      'Variable should have an init Literal declaration',
+      'should have an init Literal declaration',
       () {
         final tree = Tree(
           content: 'String val = ""',
@@ -196,7 +251,7 @@ void main() {
     );
 
     test(
-      'Variable should have an init LogicalExpression declaration',
+      'should have an init LogicalExpression declaration',
       () {
         final tree = Tree(
           content: 'Bool val = ShouldStay() == false',
@@ -225,11 +280,43 @@ void main() {
         expect(name.name, equals('val'));
       },
     );
+
+    test(
+      'should have a CastExpression that have one CallExpression and one Identifier',
+      () {
+        final tree = Tree(
+          content: 'String t = toto() as String',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+        final variableDeclaration = program.body.first;
+        expect(variableDeclaration, TypeMatcher<VariableDeclaration>());
+        variableDeclaration as VariableDeclaration;
+        final variable = variableDeclaration.variable;
+        expect(variable, isNotNull);
+        variable as Variable;
+        final cast = variable.init;
+        expect(cast, TypeMatcher<CastExpression>());
+        cast as CastExpression;
+        final call = cast.id;
+        expect(call, TypeMatcher<CallExpression>());
+        call as CallExpression;
+        final callee = call.callee;
+        expect(callee, TypeMatcher<Identifier>());
+        callee as Identifier;
+        expect(callee.name, equals('toto'));
+        final kind = cast.kind;
+        expect(kind, TypeMatcher<Identifier>());
+        kind as Identifier;
+        expect(kind.name, equals('String'));
+      },
+    );
   });
 
-  group('Property', () {
+  group('PropertyDeclaration', () {
     test(
-      'Property should have a type, a name, and Auto flag',
+      'should have a type, a name, and Auto flag',
       () {
         final tree = Tree(
           content: 'Int Property test Auto',
@@ -252,7 +339,7 @@ void main() {
     );
 
     test(
-      'Property should have a type, a name, an constant init declaration and AutoReadOnly flag',
+      'should have a type, a name, an constant init declaration and AutoReadOnly flag',
       () {
         final tree = Tree(
           content: 'Int Property test = 1 AutoReadOnly',
@@ -280,7 +367,7 @@ void main() {
     );
 
     test(
-      'Full Property should have a type, a name, a setter, and a getter',
+      'Full should have a type, a name, a setter, and a getter',
       () {
         final tree = Tree(
           content: 'Int Property test = 1\n'
@@ -314,7 +401,7 @@ void main() {
     );
 
     test(
-      'Full Property without getter and setter should throws an error',
+      'Full without getter and setter should throws an error',
       () {
         final tree = Tree(
           content: 'Int Property test = 1 Hidden\n'
@@ -327,7 +414,7 @@ void main() {
     );
 
     test(
-      'Full Property without EndProperty should throws an error',
+      'Full without Endshould throws an error',
       () {
         final tree = Tree(
           content: 'Int Property test = 1 Hidden\n'
@@ -341,7 +428,7 @@ void main() {
     );
 
     test(
-      'AutoReadOnly Property without an init declaration should throws an error',
+      'AutoReadOnly without an init declaration should throws an error',
       () {
         final tree = Tree(
           content: 'Int Property test AutoReadOnly\n',
@@ -353,7 +440,7 @@ void main() {
     );
 
     test(
-      'Conditional Property without an Auto or AutoReadOnly flag should throws an error',
+      'Conditional without an Auto or AutoReadOnly flag should throws an error',
       () {
         final tree = Tree(
           content: 'Int Property test Conditional\n',
@@ -365,7 +452,7 @@ void main() {
     );
 
     test(
-      'Auto Conditional Property without an init declaration should throws an error',
+      'Auto Conditional without an init declaration should throws an error',
       () {
         final tree = Tree(
           content: 'Int Property test Auto Conditional\n',
@@ -377,9 +464,9 @@ void main() {
     );
   });
 
-  group('Return', () {
+  group('ReturnStatement', () {
     test(
-      'Return argument should be a Literal',
+      'argument should be a Literal',
       () {
         final tree = Tree(
           content: 'Function test()\n'
@@ -406,7 +493,7 @@ void main() {
     );
 
     test(
-      'Return argument should be empty',
+      'argument should be empty',
       () {
         final tree = Tree(
           content: 'Function test()\n'
@@ -431,7 +518,7 @@ void main() {
     );
 
     test(
-      'Return argument should be a CallExpression',
+      'argument should be a CallExpression',
       () {
         final tree = Tree(
           content: 'Function test()\n'
@@ -460,7 +547,7 @@ void main() {
     );
 
     test(
-      'Return argument should be a LogicalExpression with two CallExpression',
+      'argument should be a LogicalExpression with two CallExpression',
       () {
         final tree = Tree(
           content: 'Function test()\n'
@@ -498,47 +585,53 @@ void main() {
     );
   });
 
-  group('If', () {
-    test('If should have a Literal and no parenthesis', () {
-      final tree = Tree(
-        content: 'If true\nEndIf',
-        throwWhenMissingScriptname: false,
-      );
+  group('IfStatement', () {
+    test(
+      'should have a Literal and no parenthesis',
+      () {
+        final tree = Tree(
+          content: 'If true\nEndIf',
+          throwWhenMissingScriptname: false,
+        );
 
-      final program = tree.parse();
-      expect(program.body, hasLength(1));
-      final ifStatement = program.body.first;
-      expect(ifStatement, TypeMatcher<IfStatement>());
-      ifStatement as IfStatement;
-      expect(ifStatement.test, isNotNull);
-      final ifTest = ifStatement.test as Node;
-      expect(ifTest.type, equals(NodeType.literal));
-      expect(ifStatement.consequent, isNotNull);
-      final consequent = ifStatement.consequent as Node;
-      expect(consequent.type, equals(NodeType.block));
-    });
-
-    test('If should have a Literal and parenthesis', () {
-      final tree = Tree(
-        content: 'If (true)\nEndIf',
-        throwWhenMissingScriptname: false,
-      );
-
-      final program = tree.parse();
-      expect(program.body, hasLength(1));
-      final ifStatement = program.body.first;
-      expect(ifStatement, TypeMatcher<IfStatement>());
-      ifStatement as IfStatement;
-      expect(ifStatement.test, isNotNull);
-      final ifTest = ifStatement.test as Node;
-      expect(ifTest.type, equals(NodeType.literal));
-      expect(ifStatement.consequent, isNotNull);
-      final consequent = ifStatement.consequent as Node;
-      expect(consequent.type, equals(NodeType.block));
-    });
+        final program = tree.parse();
+        expect(program.body, hasLength(1));
+        final ifStatement = program.body.first;
+        expect(ifStatement, TypeMatcher<IfStatement>());
+        ifStatement as IfStatement;
+        expect(ifStatement.test, isNotNull);
+        final ifTest = ifStatement.test as Node;
+        expect(ifTest.type, equals(NodeType.literal));
+        expect(ifStatement.consequent, isNotNull);
+        final consequent = ifStatement.consequent as Node;
+        expect(consequent.type, equals(NodeType.block));
+      },
+    );
 
     test(
-      'If should have a LogicalExpression with a CallExpression and a Literal, and parenthesis',
+      'should have a Literal and parenthesis',
+      () {
+        final tree = Tree(
+          content: 'If (true)\nEndIf',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+        expect(program.body, hasLength(1));
+        final ifStatement = program.body.first;
+        expect(ifStatement, TypeMatcher<IfStatement>());
+        ifStatement as IfStatement;
+        expect(ifStatement.test, isNotNull);
+        final ifTest = ifStatement.test as Node;
+        expect(ifTest.type, equals(NodeType.literal));
+        expect(ifStatement.consequent, isNotNull);
+        final consequent = ifStatement.consequent as Node;
+        expect(consequent.type, equals(NodeType.block));
+      },
+    );
+
+    test(
+      'should have a LogicalExpression with a CallExpression and a Literal, and parenthesis',
       () {
         final tree = Tree(
           content: 'If (shouldStay() == true)\n'
@@ -565,7 +658,7 @@ void main() {
     );
 
     test(
-      'If should have a LogicalExpression with two CallExpression, and parenthesis',
+      'should have a LogicalExpression with two CallExpression, and parenthesis',
       () {
         final tree = Tree(
           content: 'If (shouldStay() == shouldStay())\n'
@@ -592,7 +685,7 @@ void main() {
     );
 
     test(
-      'If should have a LogicalExpression with two CallExpression, one with one parameter, and parenthesis',
+      'should have a LogicalExpression with two CallExpression, one with one parameter, and parenthesis',
       () {
         final tree = Tree(
           content: 'If (shouldStay(true) == shouldStay())\n'
@@ -620,7 +713,7 @@ void main() {
     );
 
     test(
-      'If should have a LogicalExpression with two CallExpression, one with one param that is a CallExpression, and parenthesis',
+      'should have a LogicalExpression with two CallExpression, one with one param that is a CallExpression, and parenthesis',
       () {
         final tree = Tree(
           content: 'If (shouldStay(shouldStay()) == shouldStay())'
@@ -650,7 +743,7 @@ void main() {
     );
 
     test(
-      'If should have a Literal, parenthesis, and a BlockStatement with two CallExpression',
+      'should have a Literal, parenthesis, and a BlockStatement with two CallExpression',
       () {
         final tree = Tree(
           content: 'If (true)'
@@ -674,11 +767,128 @@ void main() {
         expect(consequent.body, hasLength(2));
       },
     );
+
+    test(
+      'should have a CastExpression that have a CallExpression and an Identifier',
+      () {
+        final tree = Tree(
+          content: 'If t() as String\n'
+              'EndIf',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+        final ifStatement = program.body.first;
+        expect(ifStatement, TypeMatcher<IfStatement>());
+        ifStatement as IfStatement;
+        final test = ifStatement.test;
+        expect(test, TypeMatcher<CastExpression>());
+        test as CastExpression;
+        final call = test.id;
+        expect(call, TypeMatcher<CallExpression>());
+        call as CallExpression;
+        final callee = call.callee;
+        expect(callee, TypeMatcher<Identifier>());
+        callee as Identifier;
+        expect(callee.name, equals('t'));
+        final kind = test.kind;
+        expect(kind, TypeMatcher<Identifier>());
+        kind as Identifier;
+        expect(kind.name, equals('String'));
+      },
+    );
+
+    test(
+      'should have two CastExpression that have a CallExpression and an Identifier',
+      () {
+        final tree = Tree(
+          content: 'If t() as String && a() as Int\n'
+              'EndIf',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+        final ifStatement = program.body.first;
+        expect(ifStatement, TypeMatcher<IfStatement>());
+        ifStatement as IfStatement;
+        final test = ifStatement.test;
+        expect(test, TypeMatcher<LogicalExpression>());
+        test as LogicalExpression;
+        expect(test.operator, equals('&&'));
+        final leftTest = test.left;
+        expect(leftTest, TypeMatcher<CastExpression>());
+        leftTest as CastExpression;
+        final call = leftTest.id;
+        expect(call, TypeMatcher<CallExpression>());
+        call as CallExpression;
+        final callee = call.callee;
+        expect(callee, TypeMatcher<Identifier>());
+        callee as Identifier;
+        expect(callee.name, equals('t'));
+        final kind = leftTest.kind;
+        expect(kind, TypeMatcher<Identifier>());
+        kind as Identifier;
+        expect(kind.name, equals('String'));
+
+        final rightTest = test.right;
+        expect(rightTest, TypeMatcher<CastExpression>());
+        rightTest as CastExpression;
+        final rightCall = rightTest.id;
+        expect(rightCall, TypeMatcher<CallExpression>());
+        rightCall as CallExpression;
+        final rightCallee = rightCall.callee;
+        expect(rightCallee, TypeMatcher<Identifier>());
+        rightCallee as Identifier;
+        expect(rightCallee.name, equals('a'));
+        final rightKind = rightTest.kind;
+        expect(rightKind, TypeMatcher<Identifier>());
+        rightKind as Identifier;
+        expect(rightKind.name, equals('Int'));
+      },
+    );
+
+    test(
+      'should have a CallExpression and an UnaryExpression',
+      () {
+        final tree = Tree(
+          content: 'If t() == -1\n'
+              'EndIf',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+        final ifStatement = program.body.first;
+        expect(ifStatement, TypeMatcher<IfStatement>());
+        ifStatement as IfStatement;
+        final test = ifStatement.test;
+        expect(test, TypeMatcher<LogicalExpression>());
+        test as LogicalExpression;
+        expect(test.operator, equals('=='));
+        final call = test.left;
+        expect(call, TypeMatcher<CallExpression>());
+        call as CallExpression;
+        final callee = call.callee;
+        expect(callee, TypeMatcher<Identifier>());
+        callee as Identifier;
+        expect(callee.name, equals('t'));
+
+        final rightTest = test.right;
+        expect(rightTest, TypeMatcher<UnaryExpression>());
+        rightTest as UnaryExpression;
+        expect(rightTest.argument, TypeMatcher<Literal>());
+        expect(rightTest.isPrefix, isTrue);
+        expect(rightTest.operator, '-');
+        final rightLiteral = rightTest.argument;
+        expect(rightLiteral, TypeMatcher<Literal>());
+        rightLiteral as Literal;
+        expect(rightLiteral.value, equals(1));
+      },
+    );
   });
 
   group('CallExpression', () {
     test(
-      'CallExpression should have a Literal positional param and an optional AssignExpression param',
+      'should have a Literal positional param and an optional AssignExpression param',
       () {
         final tree = Tree(
           content: 'shouldAssign(false, t = true)',
@@ -709,4 +919,132 @@ void main() {
       },
     );
   });
+
+  group('CastExpression', () {
+    test(
+      'should have two Identifiers',
+      () {
+        final tree = Tree(
+          content: 'toto as String',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+        final cast = program.body.first;
+        expect(cast, TypeMatcher<CastExpression>());
+        cast as CastExpression;
+        final id = cast.id;
+        expect(id, TypeMatcher<Identifier>());
+        id as Identifier;
+        expect(id.name, equals('toto'));
+        final kind = cast.kind;
+        expect(kind, TypeMatcher<Identifier>());
+        kind as Identifier;
+        expect(kind.name, equals('String'));
+      },
+    );
+
+    test(
+      'should have one CallExpression and one Identifier',
+      () {
+        final tree = Tree(
+          content: 'toto() as String',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+        final cast = program.body.first;
+        expect(cast, TypeMatcher<CastExpression>());
+        cast as CastExpression;
+        final call = cast.id;
+        expect(call, TypeMatcher<CallExpression>());
+        call as CallExpression;
+        final callee = call.callee;
+        expect(callee, TypeMatcher<Identifier>());
+        callee as Identifier;
+        expect(callee.name, equals('toto'));
+        final kind = cast.kind;
+        expect(kind, TypeMatcher<Identifier>());
+        kind as Identifier;
+        expect(kind.name, equals('String'));
+      },
+    );
+  });
+
+  group('Literal', () {
+    test(
+      'hex should be parsed',
+      () {
+        final tree = Tree(
+          content: 'Int t = 0x0033FF',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+
+        final variableDeclaration = program.body.first as VariableDeclaration;
+        final variable = variableDeclaration.variable as Variable;
+        final literal = variable.init;
+
+        expect(literal, TypeMatcher<Literal>());
+        literal as Literal;
+        expect(literal.value, equals(0x0033FF));
+        expect(literal.value, equals(13311));
+        expect(literal.raw, equals('0x0033FF'));
+      },
+    );
+
+    test(
+      'int negative should be parsed',
+      () {
+        final tree = Tree(
+          content: 'Int t = -1',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+
+        final variableDeclaration = program.body.first as VariableDeclaration;
+        final variable = variableDeclaration.variable as Variable;
+        final expression = variable.init;
+        expect(expression, TypeMatcher<UnaryExpression>());
+        expression as UnaryExpression;
+        expect(expression.operator, equals('-'));
+        final literal = expression.argument;
+        expect(literal, TypeMatcher<Literal>());
+        literal as Literal;
+        expect(literal.value, equals(1));
+        expect(literal.raw, equals('1'));
+      },
+    );
+
+    test(
+      'float negative should be parsed',
+      () {
+        final tree = Tree(
+          content: 'Float t = -1.0',
+          throwWhenMissingScriptname: false,
+        );
+
+        final program = tree.parse();
+
+        final variableDeclaration = program.body.first as VariableDeclaration;
+        final variable = variableDeclaration.variable as Variable;
+        final expression = variable.init;
+        expect(expression, TypeMatcher<UnaryExpression>());
+        expression as UnaryExpression;
+        expect(expression.operator, equals('-'));
+        final literal = expression.argument;
+        expect(literal, TypeMatcher<Literal>());
+        literal as Literal;
+        expect(literal.value, equals(1.0));
+        expect(literal.raw, equals('1.0'));
+      },
+    );
+  });
+
+  // TODO: none literal
+  // TODO: while
+  // TODO: conditional property must be in scriptname conditional
+  // TODO: conditional variable must be in scriptname conditional
 }

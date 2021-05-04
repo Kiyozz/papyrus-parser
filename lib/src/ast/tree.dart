@@ -102,10 +102,16 @@ class Tree {
 
     _goNext();
 
-    return _finishNode(program) as Program;
+    return _finishNode(program);
   }
 
-  int _currentCodeUnit({int? pos}) => _content.codeUnitAt(pos ?? _pos);
+  int? _currentCodeUnit({int? pos}) {
+    try {
+      return _content.codeUnitAt(pos ?? _pos);
+    } on RangeError catch (_) {
+      return null;
+    }
+  }
 
   void _goNext() {
     _lastTokenEnd = _end;
@@ -132,6 +138,17 @@ class Tree {
           final startPos = _start;
 
           _goNext();
+
+          if (_type == NodeType.asKw) {
+            final identifier = _startNodeAt(startPos).toIdentifier();
+            identifier.name = potentialVariableType;
+
+            return _parseCastExpression(
+              node.toCastExpression(),
+              startPos: startPos,
+              id: _finishNode(identifier),
+            );
+          }
 
           if (_type == NodeType.functionKw) {
             final functionNode = node.toFunctionStatement();
@@ -176,6 +193,24 @@ class Tree {
           expr: expr,
         );
     }
+  }
+
+  CastExpression _parseCastExpression(
+    CastExpression node, {
+    required int startPos,
+    required Node id,
+  }) {
+    final castNode = node.toCastExpression();
+
+    castNode.id = id;
+
+    if (_type == NodeType.asKw) {
+      _goNext();
+    }
+
+    castNode.kind = _parseIdentifier();
+
+    return _finishNode(castNode);
   }
 
   Node _parseReturnStatement(ReturnStatement node) {
@@ -355,7 +390,7 @@ class Tree {
           ? ScriptNameFlag.conditional
           : ScriptNameFlag.hidden;
 
-      flags.add(_finishNode(node) as ScriptNameFlagDeclaration);
+      flags.add(_finishNode(node));
     }
 
     return flags;
@@ -364,9 +399,7 @@ class Tree {
   ExtendsDeclaration? _parseExtends() {
     final node = _startNode().toExtendsDeclaration();
 
-    if (_type != NodeType.extendsKw) {
-      return null;
-    }
+    if (_type != NodeType.extendsKw) return null;
 
     _goNext();
 
@@ -380,7 +413,7 @@ class Tree {
 
     node.extended = _parseIdentifier();
 
-    return _finishNode(node) as ExtendsDeclaration;
+    return _finishNode(node);
   }
 
   VariableDeclaration _parseVariableDeclaration({
@@ -401,9 +434,9 @@ class Tree {
       throw Exception();
     }
 
-    node.variable = _finishNode(variable) as Variable;
+    node.variable = _finishNode(variable);
 
-    return _finishNode(node) as VariableDeclaration;
+    return _finishNode(node);
   }
 
   Node _parseExpressionStatement({
@@ -448,12 +481,69 @@ class Tree {
     node.id = _parseIdentifier();
 
     _parseFunctionParams(node);
+    _parseFunctionFlags(node);
     _parseFunctionBody(node);
 
     return _finishNode(node);
   }
 
+  void _parseFunctionFlags(FunctionStatement node) {
+    var hasGlobal = false;
+    var hasNative = false;
+
+    FunctionFlagException throwError() {
+      return FunctionFlagException(
+        flag: _value,
+        start: _start,
+        end: _end,
+      );
+    }
+
+    FunctionFlagDeclaration createFlag(FunctionFlag flag) {
+      final declaration = _startNode().toFunctionFlagDeclaration();
+      declaration.flag = flag;
+
+      return _finishNode(declaration);
+    }
+
+    if (_hasNewLineBetweenLastToken() &&
+        (_type == NodeType.globalKw || _type == NodeType.nativeKw)) {
+      throw throwError();
+    }
+
+    while (!_hasNewLineBetweenLastToken() && _type != NodeType.eof) {
+      if (_type != NodeType.globalKw && _type != NodeType.nativeKw) {
+        throw throwError();
+      }
+
+      if (_type == NodeType.globalKw && hasGlobal) {
+        throw throwError();
+      }
+
+      if (_type == NodeType.nativeKw && hasNative) {
+        throw throwError();
+      }
+
+      switch (_type) {
+        case NodeType.globalKw:
+          node.flags.add(createFlag(FunctionFlag.global));
+          hasGlobal = true;
+          _goNext();
+          break;
+        case NodeType.nativeKw:
+          node.flags.add(createFlag(FunctionFlag.native));
+          hasNative = true;
+          _goNext();
+          break;
+        default:
+          throw throwError();
+      }
+    }
+  }
+
   void _parseFunctionBody(FunctionStatement node) {
+    if (node.isNative) return;
+
     node.body = [_parseBlock(null, NodeType.functionKw)];
   }
 
@@ -478,7 +568,7 @@ class Tree {
 
     _goNext();
 
-    return _finishNode(node) as BlockStatement;
+    return _finishNode(node);
   }
 
   Node _parseExpression() {
@@ -533,9 +623,24 @@ class Tree {
 
   Node _parseExprOps() {
     final startPos = _start;
-    final expr = _parseExprSubscripts();
+    final expr = _parseMaybeUnary();
 
     return _parseExprOp(expr, startPos);
+  }
+
+  Node _parseMaybeUnary() {
+    if (_type.isPrefix) {
+      final node = _startNode().toUnaryExpression();
+
+      node.operator = _value;
+      _goNext();
+      node.argument = _parseMaybeUnary();
+      node.isPrefix = true;
+
+      return _finishNode(node);
+    }
+
+    return _parseExprSubscripts();
   }
 
   Node _parseExprOp(Node left, int leftStartPos) {
@@ -548,7 +653,7 @@ class Tree {
       final op = _value;
       _goNext();
       final startPos = _start;
-      final right = _parseExprOp(_parseExprSubscripts(), startPos);
+      final right = _parseExprOp(_parseMaybeUnary(), startPos);
       final node = _buildBinary(
         leftStartPos,
         left,
@@ -579,7 +684,7 @@ class Tree {
     return _finishNode(
       node,
       type: logical ? NodeType.logical : NodeType.binary,
-    ) as LogicalExpression;
+    );
   }
 
   Node _parseExprSubscripts() {
@@ -697,9 +802,7 @@ class Tree {
     while (true) {
       final element = _parseSubscript(base, startPos);
 
-      if (element == base) {
-        return element;
-      }
+      if (element == base) return element;
 
       base = element;
     }
@@ -729,6 +832,14 @@ class Tree {
       exprNode.arguments = exprList;
 
       base = _finishNode(exprNode);
+    } else if (_eat(NodeType.asKw)) {
+      final castNode = _startNodeAt(startPos).toCastExpression();
+
+      base = _parseCastExpression(
+        castNode,
+        startPos: startPos,
+        id: _finishNode(base),
+      );
     }
 
     // TODO: maybe here for variable/property parse ?
@@ -763,7 +874,7 @@ class Tree {
 
     _goNext();
 
-    return _finishNode(node) as Literal;
+    return _finishNode(node);
   }
 
   void _parseFunctionParams(FunctionStatement node) {
@@ -804,9 +915,9 @@ class Tree {
       _goNext();
 
       return true;
-    } else {
-      return false;
     }
+
+    return false;
   }
 
   Identifier _parseIdentifier() {
@@ -824,16 +935,14 @@ class Tree {
 
     _goNext();
 
-    return _finishNode(node) as Identifier;
+    return _finishNode(node);
   }
 
   void _nextToken() {
     _pos = _skipSpace();
     _start = _pos;
 
-    if (_pos >= _content.length) {
-      return _finishToken(NodeType.eof);
-    }
+    if (_pos >= _content.length) return _finishToken(NodeType.eof);
 
     if (_shouldSkipParens) {
       final startPos = _pos;
@@ -848,11 +957,13 @@ class Tree {
       _foundParens = false;
     }
 
-    if (_pos >= _content.length) {
-      return _finishToken(NodeType.eof);
-    }
+    if (_pos >= _content.length) return _finishToken(NodeType.eof);
 
-    return _readToken(_fullCodeUnitAtPos());
+    final code = _fullCodeUnitAtPos();
+
+    if (code == null) return;
+
+    return _readToken(code);
   }
 
   void _readToken(int code) {
@@ -872,7 +983,7 @@ class Tree {
     _context.addToken(prevType);
   }
 
-  Node _finishNode(Node node, {int? pos, NodeType? type}) {
+  T _finishNode<T extends Node>(T node, {int? pos, NodeType? type}) {
     final usedPos = pos ?? _lastTokenEnd;
 
     node.type = type ?? node.type;
@@ -930,6 +1041,10 @@ class Tree {
     while (_pos < _content.length) {
       final ch = _fullCodeUnitAtPos();
 
+      if (ch == null) {
+        break;
+      }
+
       if (_isIdentifierChar(ch)) {
         _pos += ch <= 0xffff ? 1 : 2;
       } else {
@@ -962,6 +1077,13 @@ class Tree {
       case $colon:
         ++_pos;
         return _finishToken(NodeType.colon);
+      case $0:
+        final next = _next;
+
+        if (next == $x || next == $X) return _readRadixNumber(16);
+
+        continue number;
+      number:
       case $1:
       case $2:
       case $3:
@@ -1000,8 +1122,10 @@ class Tree {
     // TODO: error unexpected char
   }
 
-  int _fullCodeUnitAtPos({int? pos}) {
+  int? _fullCodeUnitAtPos({int? pos}) {
     final code = _currentCodeUnit(pos: pos ?? _pos);
+
+    if (code == null) return null;
 
     if (code < 0xd7ff /* 55295 */ || code >= 0xe000 /* 57344 */) {
       return code;
@@ -1071,7 +1195,7 @@ class Tree {
           pos = newPos;
           break;
         default:
-          if (ch > $bs && ch < $cr) {
+          if (ch != null && ch > $bs && ch < $cr) {
             ++pos;
             break;
           } else {
@@ -1121,7 +1245,7 @@ class Tree {
     return pos;
   }
 
-  bool _isNewLine(int code) {
+  bool _isNewLine(int? code) {
     return code == $lf || code == $cr;
   }
 
@@ -1152,9 +1276,7 @@ class Tree {
       next = _content.codeUnitAt(_pos + 2);
     }
 
-    if (next == $equal) {
-      return _finishOp(NodeType.assign, size + 1);
-    }
+    if (next == $equal) return _finishOp(NodeType.assign, size + 1);
 
     _finishOp(tokenType, size);
   }
@@ -1173,9 +1295,7 @@ class Tree {
   void _readTokenEqualExclamation(int code) {
     final next = _next;
 
-    if (next == $equal) {
-      return _finishOp(NodeType.equality, 2);
-    }
+    if (next == $equal) return _finishOp(NodeType.equality, 2);
 
     return _finishOp(code == $equal ? NodeType.assign : NodeType.prefix, 1);
   }
@@ -1198,9 +1318,7 @@ class Tree {
       );
     }
 
-    if (code == $equal) {
-      return _finishOp(NodeType.assign, 2);
-    }
+    if (code == $equal) return _finishOp(NodeType.assign, 2);
   }
 
   void _readTokenPlusMin(int code) {
@@ -1213,6 +1331,27 @@ class Tree {
     if (next == $equal) return _finishOp(NodeType.assign, 2);
 
     _finishOp(NodeType.plusMinus, 1);
+  }
+
+  void _readRadixNumber(int base) {
+    _pos += 2;
+    final val = _readInt(base, null);
+
+    if (val == null) {
+      // TODO: expected number in radix $base
+
+      throw Exception();
+    }
+
+    final code = _fullCodeUnitAtPos();
+
+    if (code != null && _isIdentifierStart(code)) {
+      // TODO: unexpected identifier directly after number
+
+      throw Exception();
+    }
+
+    return _finishToken(NodeType.num, val: val);
   }
 
   void _readNumber(bool startsWithDot) {
@@ -1242,7 +1381,9 @@ class Tree {
       }
     }
 
-    if (_isIdentifierStart(_fullCodeUnitAtPos())) {
+    final code = _fullCodeUnitAtPos();
+
+    if (code != null && _isIdentifierStart(code)) {
       // TODO: error identifier directly after number
     }
 
@@ -1334,24 +1475,30 @@ class Tree {
     var total = 0;
 
     for (var i = 0; i < (len ?? double.infinity); ++i, ++_pos) {
-      final code = _currentCodeUnit();
-      int? val;
+      try {
+        final code = _currentCodeUnit();
+        int? val;
 
-      if (code >= $a) {
-        val = code - $a + 10;
-      } else if (code >= $A) {
-        val = code - $A + 10;
-      } else if (code >= $0 && code <= $9) {
-        val = code - $0;
-      } else {
-        val = null;
+        if (code == null) break;
+
+        if (code >= $a) {
+          val = code - $a + 10;
+        } else if (code >= $A) {
+          val = code - $A + 10;
+        } else if (code >= $0 && code <= $9) {
+          val = code - $0;
+        } else {
+          val = null;
+        }
+
+        if ((val ?? double.infinity) >= radix) {
+          break;
+        }
+
+        total = total * radix + (val ?? 0);
+      } on RangeError catch (_) {
+        return total;
       }
-
-      if ((val ?? double.infinity) >= radix) {
-        break;
-      }
-
-      total = total * radix + (val ?? 0);
     }
 
     if (_pos == start || len != null && _pos - start != len) return null;
@@ -1390,9 +1537,7 @@ class Tree {
       case $lf:
         return '';
       default:
-        if (_isNewLine(ch)) {
-          return '';
-        }
+        if (_isNewLine(ch)) return '';
 
         return String.fromCharCode(ch);
     }

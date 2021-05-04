@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'types.dart';
 
 class Node {
@@ -36,6 +37,10 @@ class Node {
 
   FunctionStatement toFunctionStatement() {
     return FunctionStatement(start: start, end: end);
+  }
+
+  FunctionFlagDeclaration toFunctionFlagDeclaration() {
+    return FunctionFlagDeclaration(start: start, end: end);
   }
 
   BlockStatement toBlockStatement() {
@@ -96,6 +101,14 @@ class Node {
 
   ReturnStatement toReturnStatement() {
     return ReturnStatement(start: start, end: end);
+  }
+
+  CastExpression toCastExpression() {
+    return CastExpression(start: start, end: end);
+  }
+
+  UnaryExpression toUnaryExpression() {
+    return UnaryExpression(start: start, end: end);
   }
 }
 
@@ -184,6 +197,7 @@ class FunctionStatement extends Node {
   Identifier? id;
   List<Node> body = [];
   List<Node> params = [];
+  List<FunctionFlagDeclaration> flags = [];
 
   String kind = '';
 
@@ -191,6 +205,39 @@ class FunctionStatement extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  bool get isNative {
+    final flag = flags.firstWhereOrNull((elem) {
+      return elem.flag == FunctionFlag.native;
+    });
+
+    return flag != null;
+  }
+}
+
+class FunctionFlagDeclaration extends Node {
+  @override
+  NodeType? type = NodeType.flagKw;
+
+  FunctionFlag? flag;
+
+  FunctionFlagDeclaration({
+    required int start,
+    int end = 0,
+  }) : super(start: start, end: end);
+
+  FunctionFlag flagFromType(NodeType type) {
+    switch (type) {
+      case NodeType.globalKw:
+        return FunctionFlag.global;
+      case NodeType.nativeKw:
+        return FunctionFlag.native;
+      default:
+        // TODO: error, unexpected flag
+
+        throw Exception();
+    }
+  }
 }
 
 class BlockStatement extends Node {
@@ -432,6 +479,35 @@ class ReturnStatement extends Node {
   NodeType? type = NodeType.returnKw;
 
   ReturnStatement({
+    required int start,
+    int end = 0,
+  }) : super(start: start, end: end);
+}
+
+class CastExpression extends Node {
+  @override
+  NodeType? type = NodeType.castExpression;
+
+  Node? id;
+  Node? kind;
+
+  CastExpression({
+    required int start,
+    int end = 0,
+  }) : super(start: start, end: end);
+}
+
+class UnaryExpression extends Node {
+  @override
+  NodeType? type = NodeType.unary;
+
+  String operator = '';
+
+  Node? argument;
+
+  bool isPrefix = false;
+
+  UnaryExpression({
     required int start,
     int end = 0,
   }) : super(start: start, end: end);

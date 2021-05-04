@@ -1,9 +1,8 @@
-enum ScriptNameFlag {
-  conditional,
-  hidden,
-}
+enum ScriptNameFlag { conditional, hidden }
 
 enum PropertyFlag { conditional, hidden, auto, autoReadonly }
+
+enum FunctionFlag { global, native }
 
 enum NodeType {
   eof,
@@ -76,7 +75,9 @@ enum NodeType {
   conditionalKw,
   hiddenKw,
   prefix,
-  callExpression
+  callExpression,
+  castExpression,
+  unary
 }
 
 const keywordsMap = {
@@ -113,6 +114,17 @@ const keywordsMap = {
   'hidden': NodeType.hiddenKw,
 };
 
+extension NodeTypePrefix on NodeType {
+  bool get isPrefix {
+    switch (this) {
+      case NodeType.plusMinus:
+        return true;
+      default:
+        return false;
+    }
+  }
+}
+
 extension NodeTypeString on NodeType {
   String get name {
     switch (this) {
@@ -138,6 +150,8 @@ extension NodeTypeString on NodeType {
         return 'Close Bracket';
       case NodeType.callExpression:
         return 'Call Expression';
+      case NodeType.castExpression:
+        return 'Cast Expression';
       case NodeType.char:
         return 'Char';
       case NodeType.colon:
@@ -258,6 +272,8 @@ extension NodeTypeString on NodeType {
         return 'VariableDeclaration';
       case NodeType.whileKw:
         return 'While';
+      case NodeType.unary:
+        return 'Unary';
     }
   }
 }
