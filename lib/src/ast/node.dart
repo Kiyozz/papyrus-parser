@@ -141,7 +141,7 @@ class Program extends Node {
 }
 
 class ScriptName extends Node {
-  Node? id;
+  Identifier? id;
   ExtendsDeclaration? extendsDeclaration;
   List<ScriptNameFlagDeclaration> flags = [];
 
@@ -367,6 +367,7 @@ class MemberExpression extends Node {
   NodeType? type = NodeType.member;
 
   Node? property;
+  Node? object;
 
   bool computed = false;
 

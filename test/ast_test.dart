@@ -41,9 +41,18 @@ void main() {
     );
 
     test(
-      'without ScriptName should throws an error',
+      'without ScriptNameStatement should throws an error',
       () {
         final tree = Tree(content: 'function toto()\nendfunction');
+
+        expect(() => tree.parse(), throwsA(TypeMatcher<ScriptNameException>()));
+      },
+    );
+
+    test(
+      'not the same as the filename should throws an error',
+      () {
+        final tree = Tree(content: 'ScriptName notTest', filename: 'Test');
 
         expect(() => tree.parse(), throwsA(TypeMatcher<ScriptNameException>()));
       },
@@ -280,6 +289,21 @@ void main() {
         expect(callee.name, equals('toto'));
         final kind = cast.kind as Identifier;
         expect(kind.name, equals('String'));
+      },
+    );
+
+    test(
+      'should have an MemberExpression as init declaration',
+      () {
+        final tree = Tree(
+          content: 'String f = toto.init.toto',
+          throwWhenMissingScriptname: false,
+        );
+
+        final variableDeclaration =
+            tree.parse().body.first as VariableDeclaration;
+        final variable = variableDeclaration.variable as Variable;
+        expect(variable.init, TypeMatcher<MemberExpression>());
       },
     );
   });
@@ -1138,4 +1162,46 @@ void main() {
       },
     );
   });
+
+  group('Parent MemberExpression', () {
+    test('used as a function should throws an error', () {
+      final tree = Tree(
+        content: 'ScriptName test extends Form\n'
+            '\n'
+            'Function test()\n'
+            '  Parent()\n'
+            'EndFunction',
+      );
+
+      expect(() => tree.parse(), throwsA(TypeMatcher<ParentMemberException>()));
+    });
+
+    test('used when ScriptName does not extends should throws an error', () {
+      final tree = Tree(
+        content: 'ScriptName test\n'
+            '\n'
+            'Function test()\n'
+            '  Parent.test()\n'
+            'EndFunction',
+      );
+
+      expect(() => tree.parse(), throwsA(TypeMatcher<ParentMemberException>()));
+    });
+
+    test('used as a property of MemberExpression should throws an error', () {
+      final tree = Tree(
+        content: 'ScriptName test extends Form\n'
+            '\n'
+            'Function test()\n'
+            '  Parent.Parent.test()\n'
+            'EndFunction',
+      );
+
+      expect(() => tree.parse(), throwsA(TypeMatcher<ParentMemberException>()));
+    });
+  });
+
+  // TODO: self Expression can only be used inside CallExpression params
+  // TODO: FunctionStatement cannot have a FunctionStatement inside
+  // TODO: FunctionStatement cannot have a StateStatement inside
 }

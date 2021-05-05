@@ -13,7 +13,10 @@ abstract class NodeException {
 }
 
 class ScriptNameException extends NodeException {
+  String? message;
+
   ScriptNameException({
+    this.message,
     required int start,
     required int end,
     int? pos,
@@ -21,6 +24,10 @@ class ScriptNameException extends NodeException {
 
   @override
   String toString() {
+    if (message != null) {
+      return 'ScriptNameException: [$_start:$_end] $message';
+    }
+
     return 'ScriptNameException: [$_start:$_end] Unexpected token at $_pos. ScriptName statement is not complete';
   }
 }
@@ -130,5 +137,22 @@ class EventFlagException extends NodeException {
   @override
   String toString() {
     return 'EventFlagException: [$_start:$_end] unexpected flag $_flag';
+  }
+}
+
+class ParentMemberException extends NodeException {
+  final String _message;
+
+  ParentMemberException(
+    String message, {
+    required int start,
+    required int end,
+    int? pos,
+  })  : _message = message,
+        super(start: start, end: end, pos: pos);
+
+  @override
+  String toString() {
+    return 'ParentMemberException: [$_start:$_end] $_message';
   }
 }

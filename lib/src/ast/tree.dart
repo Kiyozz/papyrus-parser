@@ -21,6 +21,7 @@ class Context {
 ///
 /// Emits a AST format Program.
 class Tree {
+  final String? _filename;
   final String _content;
   final bool _throwWhenMissingScriptname;
 
@@ -75,8 +76,10 @@ class Tree {
   Tree({
     required String content,
     bool throwWhenMissingScriptname = true,
+    String? filename,
   })  : _content = content,
-        _throwWhenMissingScriptname = throwWhenMissingScriptname;
+        _throwWhenMissingScriptname = throwWhenMissingScriptname,
+        _filename = filename;
 
   Program parse() {
     final program = _startNode().toProgram();
@@ -497,6 +500,21 @@ class Tree {
     }
 
     node.id = _parseIdentifier();
+
+    final filename = _filename;
+    if (filename != null) {
+      final id = node.id as Identifier;
+
+      if (id.name.toLowerCase() != filename.toLowerCase()) {
+        throw ScriptNameException(
+          start: node.start,
+          end: _lastTokenEnd,
+          message:
+              'ScriptNameStatement Identifier must be the same as the filename ($filename)',
+        );
+      }
+    }
+
     node.extendsDeclaration = _parseExtends();
     node.flags = _parseScriptNameFlags();
 
@@ -867,23 +885,32 @@ class Tree {
   }
 
   Node _parseExprAtom() {
-    dynamic node;
-
     switch (_type) {
       case NodeType.parentKw:
-        node = _startNode();
+        final parentNode = _startNode().toIdentifier();
+
+        parentNode.name = _value;
+
+        if (_currentCodeUnit() == $open_paren) {
+          throw ParentMemberException(
+            'Parent cannot be used as a function',
+            start: parentNode.start,
+            end: _lastTokenEnd,
+          );
+        }
+
         _goNext();
 
         return _finishNode(
-          node,
+          parentNode,
           type: NodeType.parentKw,
         );
       case NodeType.selfKw:
-        node = _startNode();
+        final selfNode = _startNode();
         _goNext();
 
         return _finishNode(
-          node,
+          selfNode,
           type: NodeType.selfKw,
         );
       case NodeType.name:
@@ -897,13 +924,13 @@ class Tree {
       case NodeType.noneKw:
       case NodeType.falseKw:
       case NodeType.trueKw:
-        node = _startNode().toLiteral()
+        final literalNode = _startNode().toLiteral()
           ..value = _type == NodeType.noneKw ? null : _type == NodeType.trueKw
           ..raw = _content.substring(_start, _end);
 
         _goNext();
 
-        return _finishNode(node);
+        return _finishNode(literalNode);
       case NodeType.newKw:
         return _parseNew();
       case NodeType.importKw:
@@ -984,7 +1011,32 @@ class Tree {
     final computed = _eat(NodeType.bracketL);
 
     if (computed || _eat(NodeType.dot)) {
+      if (base is Identifier && base.type == NodeType.parentKw) {
+        final scriptName = _scriptName;
+
+        if (scriptName != null && scriptName.extendsDeclaration == null) {
+          throw ParentMemberException(
+            'Cannot use Parent in ScriptName that do not extends Object',
+            start: base.start,
+            end: _lastTokenEnd,
+          );
+        }
+      }
+
+      if (base is MemberExpression &&
+          base.object is Identifier &&
+          base.object?.type == NodeType.parentKw) {
+        final object = base.object as Identifier;
+
+        throw ParentMemberException(
+          'Property ${object.name} cannot be used as a MemberExpression',
+          start: base.start,
+          end: _lastTokenEnd,
+        );
+      }
+
       final node = _startNodeAt(startPos).toMemberExpression();
+      node.object = base;
 
       if (computed) {
         node.property = _parseExpression();
@@ -1433,6 +1485,8 @@ class Tree {
     final next = _next;
 
     if (next >= $0 && next <= $9) return _readNumber(true);
+
+    ++_pos;
 
     return _finishToken(NodeType.dot);
   }
