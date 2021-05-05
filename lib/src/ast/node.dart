@@ -56,20 +56,12 @@ class Node {
     return Literal(start: start, end: end);
   }
 
-  Name toName() {
-    return Name(start: start, end: end);
-  }
-
   Identifier toIdentifier() {
     return Identifier(start: start, end: end);
   }
 
   LogicalExpression toLogical() {
     return LogicalExpression(start: start, end: end);
-  }
-
-  Import toImport() {
-    return Import(start: start, end: end);
   }
 
   NewExpression toNewExpression() {
@@ -126,6 +118,10 @@ class Node {
 
   EventFlagDeclaration toEventFlagDeclaration() {
     return EventFlagDeclaration(start: start, end: end);
+  }
+
+  ImportStatement toImportStatement() {
+    return ImportStatement(start: start, end: end);
   }
 }
 
@@ -304,18 +300,6 @@ class Literal extends Node {
   }) : super(start: start, end: end);
 }
 
-class Name extends Node {
-  @override
-  NodeType? type = NodeType.name;
-
-  String name = '';
-
-  Name({
-    required int start,
-    int end = 0,
-  }) : super(start: start, end: end);
-}
-
 class Identifier extends Node {
   @override
   NodeType? type = NodeType.id;
@@ -334,18 +318,6 @@ class LogicalExpression extends Node {
   String operator = '';
 
   LogicalExpression({
-    required int start,
-    int end = 0,
-  }) : super(start: start, end: end);
-}
-
-class Import extends Node {
-  @override
-  NodeType? type = NodeType.importKw;
-
-  Name? imported;
-
-  Import({
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
@@ -636,4 +608,16 @@ class EventFlagDeclaration extends Node {
         );
     }
   }
+}
+
+class ImportStatement extends Node {
+  @override
+  NodeType? type = NodeType.importKw;
+
+  Identifier? id;
+
+  ImportStatement({
+    required int start,
+    int end = 0,
+  }) : super(start: start, end: end);
 }

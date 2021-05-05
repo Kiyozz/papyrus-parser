@@ -63,6 +63,11 @@ class Tree {
   /// Useful to know if parsing inside of EventStatement
   bool _inEvent = false;
 
+  /// Useful to know if parsing inside of StateStatement
+  bool _inState = false;
+
+  bool get _inStatement => _inFunction || _inEvent || _inState;
+
   /// The context stack is used to superficially track syntactic
   /// context to predict whether a regular expression is allowed in a
   /// given position
@@ -154,6 +159,8 @@ class Tree {
         return _parseReturnStatement(node.toReturnStatement());
       case NodeType.eventKw:
         return _parseEventStatement(node.toEventStatement());
+      case NodeType.importKw:
+        return _parseImport();
       default:
         final startPos = _start;
 
@@ -250,7 +257,7 @@ class Tree {
       return EventFlagException(
         flag: _value,
         start: _start,
-        end: _end,
+        end: _pos,
       );
     }
 
@@ -298,6 +305,7 @@ class Tree {
     NodeType? flag,
     int? startPos,
   }) {
+    _inState = true;
     node.flag = flag == NodeType.autoKw ? StateFlag.auto : null;
 
     if (node.isAuto && startPos != null) {
@@ -313,9 +321,11 @@ class Tree {
       throw StateStatementException(
         'StateStatement can only contains FunctionStatement or EventStatement',
         start: node.start,
-        end: _lastTokenEnd,
+        end: node.id?.end ?? _pos,
       );
     }
+
+    _inState = false;
 
     return _finishNode(node);
   }
@@ -344,7 +354,7 @@ class Tree {
         !_inEvent) {
       throw UnexpectedTokenException(
         start: node.start,
-        end: _lastTokenEnd,
+        end: _pos,
         message: 'Return statement can only be used in Function or Event',
       );
     }
@@ -382,8 +392,8 @@ class Tree {
       if (node.init?.type != NodeType.literal) {
         throw PropertyException(
           'Property init declaration should be a constant',
-          start: node.start,
-          end: _lastTokenEnd,
+          start: _pos,
+          end: _pos,
         );
       }
     }
@@ -398,7 +408,7 @@ class Tree {
         throw PropertyException(
           'A Conditional Property must appears in ScriptName flagged Conditional',
           start: node.start,
-          end: _lastTokenEnd,
+          end: _pos,
         );
       }
 
@@ -413,7 +423,7 @@ class Tree {
       throw PropertyException(
         'A AutoReadOnly should have a constant init declaration',
         start: node.start,
-        end: _lastTokenEnd,
+        end: _pos,
       );
     }
 
@@ -421,7 +431,7 @@ class Tree {
       throw PropertyException(
         'A Conditional Property must be Auto or AutoReadOnly',
         start: node.start,
-        end: _lastTokenEnd,
+        end: _pos,
       );
     }
 
@@ -429,7 +439,7 @@ class Tree {
       throw PropertyException(
         'A Conditional Property must have an constant init declaration',
         start: node.start,
-        end: _lastTokenEnd,
+        end: _pos,
       );
     }
 
@@ -440,9 +450,9 @@ class Tree {
         final name = node.id?.name ?? 'unknown';
 
         throw PropertyException(
-          'Full property "$name" must be closed by "endproperty"',
+          'Missing "EndProperty" for "$name" Property',
           start: node.start,
-          end: _lastTokenEnd,
+          end: _pos,
         );
       }
 
@@ -462,7 +472,7 @@ class Tree {
         throw PropertyException(
           'A full property must have a getter and/or a setter',
           start: node.start,
-          end: _lastTokenEnd,
+          end: _pos,
         );
       }
 
@@ -478,7 +488,7 @@ class Tree {
           throw PropertyException(
             'Setter should have one parameter with the same type as the Property',
             start: node.start,
-            end: _lastTokenEnd,
+            end: _pos,
           );
         }
       }
@@ -490,7 +500,7 @@ class Tree {
           throw PropertyException(
             'Getter should return the same type as the Property',
             start: node.start,
-            end: _lastTokenEnd,
+            end: _pos,
           );
         }
 
@@ -523,8 +533,7 @@ class Tree {
     if (_type != NodeType.name) {
       throw UnexpectedTokenException(
         start: node.start,
-        end: _end,
-        pos: _start,
+        end: _pos,
       );
     }
 
@@ -537,7 +546,7 @@ class Tree {
       if (id.name.toLowerCase() != filename.toLowerCase()) {
         throw ScriptNameException(
           start: node.start,
-          end: _lastTokenEnd,
+          end: _pos,
           message:
               'ScriptNameStatement Identifier must be the same as the filename ($filename)',
         );
@@ -582,8 +591,7 @@ class Tree {
     if (_hasNewLineBetweenLastToken()) {
       throw ScriptNameException(
         start: node.start,
-        end: _end,
-        pos: _start,
+        end: _pos,
       );
     }
 
@@ -705,7 +713,7 @@ class Tree {
       return FunctionFlagException(
         flag: _value,
         start: _start,
-        end: _end,
+        end: _pos,
       );
     }
 
@@ -773,7 +781,7 @@ class Tree {
       throw BlockStatementException(
         'Missing "$missingTypes"',
         start: node.start,
-        end: _end,
+        end: _pos,
       );
     }
 
@@ -926,7 +934,7 @@ class Tree {
           throw ParentMemberException(
             'Parent cannot be used as a function',
             start: parentNode.start,
-            end: _lastTokenEnd,
+            end: _pos,
           );
         }
 
@@ -964,8 +972,6 @@ class Tree {
         return _finishNode(literalNode);
       case NodeType.newKw:
         return _parseNew();
-      case NodeType.importKw:
-        return _parseImport();
       default:
         // TODO: unexpected I think
         throw Exception();
@@ -973,7 +979,15 @@ class Tree {
   }
 
   Node _parseImport() {
-    final node = _startNode().toImport();
+    if (_inStatement) {
+      throw UnexpectedTokenException(
+        message: 'ImportStatement cannot appears inside any Statement',
+        start: _pos,
+        end: _pos,
+      );
+    }
+
+    final node = _startNode().toImportStatement();
 
     _goNext();
 
@@ -985,10 +999,7 @@ class Tree {
       );
     }
 
-    final imported = _startNode().toName();
-    imported.name = _value;
-
-    node.imported = _finishNode(node) as Name;
+    node.id = _parseIdentifier();
 
     return _finishNode(node);
   }
@@ -1057,7 +1068,7 @@ class Tree {
           throw ParentMemberException(
             'Cannot use Parent in ScriptName that do not extends Object',
             start: base.start,
-            end: _lastTokenEnd,
+            end: _pos,
           );
         }
       }
@@ -1070,7 +1081,7 @@ class Tree {
         throw ParentMemberException(
           'Property ${object.name} cannot be used as a MemberExpression',
           start: base.start,
-          end: _lastTokenEnd,
+          end: _pos,
         );
       }
 
@@ -1284,7 +1295,7 @@ class Tree {
     if (_options.throwWhenMissingScriptname &&
         _isFirstRead &&
         word.toLowerCase() != 'scriptname') {
-      throw ScriptNameException(start: _start, end: _lastTokenEnd, pos: _pos);
+      throw ScriptNameException(start: _start, end: _pos);
     }
 
     if (_keywords.hasMatch(word)) {
@@ -1505,7 +1516,7 @@ class Tree {
       throw UnexpectedTokenException(
         message: 'Block comment is not closed',
         start: startPos,
-        end: _content.length,
+        end: _pos,
       );
     }
 

@@ -22,6 +22,6 @@
 - [x] ReturnStatement
 - [x] VariableDeclaration
 - [x] MemberExpression
-- [ ] ImportStatement
+- [x] ImportStatement
 - [ ] NewArray
 - [ ] Array index

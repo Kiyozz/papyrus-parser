@@ -1,15 +1,12 @@
 abstract class NodeException {
   final int _start;
   final int _end;
-  final int? _pos;
 
   const NodeException({
     required int start,
     required int end,
-    int? pos,
-  })  : _start = start,
-        _end = end,
-        _pos = pos;
+  })   : _start = start,
+        _end = end;
 }
 
 class ScriptNameException extends NodeException {
@@ -19,8 +16,7 @@ class ScriptNameException extends NodeException {
     this.message,
     required int start,
     required int end,
-    int? pos,
-  }) : super(start: start, end: end, pos: pos);
+  }) : super(start: start, end: end);
 
   @override
   String toString() {
@@ -28,7 +24,7 @@ class ScriptNameException extends NodeException {
       return 'ScriptNameException: [$_start:$_end] $message';
     }
 
-    return 'ScriptNameException: [$_start:$_end] Unexpected token at $_pos. ScriptName statement is not complete';
+    return 'ScriptNameException: [$_start:$_end] Unexpected token. ScriptName statement is not complete';
   }
 }
 
@@ -38,10 +34,9 @@ class UnexpectedTokenException extends NodeException {
   const UnexpectedTokenException({
     required int start,
     required int end,
-    int? pos,
     String? message,
   })  : _message = message,
-        super(start: start, end: end, pos: pos);
+        super(start: start, end: end);
 
   @override
   String toString() {
@@ -49,7 +44,7 @@ class UnexpectedTokenException extends NodeException {
       return 'UnexpectedTokenException: [$_start:$_end] $_message';
     }
 
-    return 'UnexpectedTokenException: [$_start:$_end] Unexpected token at $_pos.';
+    return 'UnexpectedTokenException: [$_start:$_end] Unexpected token.';
   }
 }
 
@@ -60,9 +55,8 @@ class PropertyException extends NodeException {
     String message, {
     required int start,
     required int end,
-    int? pos,
-  })  : _message = message,
-        super(start: start, end: end, pos: pos);
+  })   : _message = message,
+        super(start: start, end: end);
 
   @override
   String toString() {
@@ -77,9 +71,8 @@ class BlockStatementException extends NodeException {
     String message, {
     required int start,
     required int end,
-    int? pos,
-  })  : _message = message,
-        super(start: start, end: end, pos: pos);
+  })   : _message = message,
+        super(start: start, end: end);
 
   @override
   String toString() {
@@ -94,9 +87,8 @@ class FunctionFlagException extends NodeException {
     required String flag,
     required int start,
     required int end,
-    int? pos,
-  })  : _flag = flag,
-        super(start: start, end: end, pos: pos);
+  })   : _flag = flag,
+        super(start: start, end: end);
 
   @override
   String toString() {
@@ -111,9 +103,8 @@ class StateStatementException extends NodeException {
     String message, {
     required int start,
     required int end,
-    int? pos,
-  })  : _message = message,
-        super(start: start, end: end, pos: pos);
+  })   : _message = message,
+        super(start: start, end: end);
 
   @override
   String toString() {
@@ -130,7 +121,7 @@ class EventFlagException extends NodeException {
     required int end,
     int? pos,
   })  : _flag = flag,
-        super(start: start, end: end, pos: pos);
+        super(start: start, end: end);
 
   @override
   String toString() {
@@ -147,7 +138,7 @@ class ParentMemberException extends NodeException {
     required int end,
     int? pos,
   })  : _message = message,
-        super(start: start, end: end, pos: pos);
+        super(start: start, end: end);
 
   @override
   String toString() {

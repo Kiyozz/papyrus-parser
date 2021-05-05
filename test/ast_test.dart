@@ -1311,9 +1311,83 @@ void main() {
     );
   });
 
+  group('ImportStatement', () {
+    test(
+      'should have an identifier',
+      () {
+        final tree = Tree(
+          content: 'Import Debug',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+          ),
+        );
+
+        final importStatement = tree.parse().body.first as ImportStatement;
+        final id = importStatement.id as Identifier;
+        expect(id.name, equals('Debug'));
+      },
+    );
+
+    test(
+      'inside a FunctionStatement should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Function test()\n'
+              '  Import Debug\n'
+              'EndFunction',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+          ),
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<UnexpectedTokenException>()),
+        );
+      },
+    );
+
+    test(
+      'inside a StateStatement should throws an error',
+      () {
+        final tree = Tree(
+          content: 'State test\n'
+              '  Import Debug\n'
+              'EndState',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+          ),
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<UnexpectedTokenException>()),
+        );
+      },
+    );
+
+    test(
+      'inside a EventStatement should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Event test()\n'
+              '  Import Debug\n'
+              'EndEvent',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+          ),
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<UnexpectedTokenException>()),
+        );
+      },
+    );
+  });
+
   // TODO: review start/end of nodes
   // TODO: process line/column
-  // TODO: ImportStatement
   // TODO: throw when while, call, cast, if is used outside of function
   // TODO: self Expression can only be used inside CallExpression params
   // TODO: FunctionStatement cannot have a FunctionStatement inside
