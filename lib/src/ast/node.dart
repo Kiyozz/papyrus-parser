@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:papyrus_parser/papyrus_parser.dart';
 import 'types.dart';
 
 class Node {
@@ -256,9 +257,11 @@ class FunctionFlagDeclaration extends Node {
       case NodeType.nativeKw:
         return FunctionFlag.native;
       default:
-        // TODO: error, unexpected flag
-
-        throw Exception();
+        throw UnexpectedTokenException(
+          message: 'Unexpected flag',
+          start: start,
+          end: end,
+        );
     }
   }
 }
@@ -489,9 +492,11 @@ class PropertyFlagDeclaration extends Node {
       case NodeType.hiddenKw:
         return PropertyFlag.hidden;
       default:
-        // TODO: error, unexpected flag
-
-        throw Exception();
+        throw UnexpectedTokenException(
+          message: 'Unexpected flag',
+          start: start,
+          end: end,
+        );
     }
   }
 }
@@ -624,9 +629,11 @@ class EventFlagDeclaration extends Node {
       case NodeType.nativeKw:
         return EventFlag.native;
       default:
-        // TODO: error, unexpected flag
-
-        throw Exception();
+        throw UnexpectedTokenException(
+          message: 'Unexpected flag',
+          start: start,
+          end: end,
+        );
     }
   }
 }

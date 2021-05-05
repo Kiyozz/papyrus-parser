@@ -65,7 +65,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Function toto()\nEndFunction',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -84,7 +84,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Function toto(String n)\nEndFunction',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -107,7 +107,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Function toto(String n = "")\nEndFunction',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -127,7 +127,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Function toto(String n = "")\n',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         expect(
@@ -142,7 +142,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Function toto() Global Native',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -163,7 +163,7 @@ void main() {
         final tree = Tree(
           content: 'Function toto() Global\n'
               'EndFunction',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -182,7 +182,7 @@ void main() {
         final tree = Tree(
           content: 'Function toto() unknownFlag\n'
               'EndFunction',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         expect(
@@ -198,7 +198,7 @@ void main() {
         final tree = Tree(
           content: 'Function toto(String n = "") global\n'
               'EndFunction',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final functionStatement = tree.parse().body.first as FunctionStatement;
@@ -216,7 +216,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'String val',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -235,7 +235,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'String val = ""',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -255,7 +255,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Bool val = ShouldStay() == false',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -277,7 +277,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'String t = toto() as String',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -297,7 +297,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'String f = toto.init.toto',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final variableDeclaration =
@@ -314,7 +314,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Int Property test Auto',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -333,7 +333,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Int Property test = 1 AutoReadOnly',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -359,7 +359,7 @@ void main() {
               '  Function Set(Int value)\n'
               '  EndFunction\n'
               'EndProperty',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -382,7 +382,7 @@ void main() {
         final tree = Tree(
           content: 'Int Property test = 1 Hidden\n'
               'EndProperty',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
@@ -396,7 +396,7 @@ void main() {
           content: 'Int Property test = 1 Hidden\n'
               '  Int Function Get()\n'
               '  EndFunction',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
@@ -408,7 +408,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Int Property test AutoReadOnly\n',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
@@ -420,7 +420,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Int Property test Conditional\n',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
@@ -432,7 +432,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Int Property test Auto Conditional\n',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
@@ -463,7 +463,7 @@ void main() {
           content: 'Function test()\n'
               '  Return true\n'
               'EndFunction',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -486,7 +486,7 @@ void main() {
           content: 'Function test()\n'
               '  Return\n'
               'EndFunction',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -508,7 +508,7 @@ void main() {
           content: 'Function test()\n'
               '  Return shouldStay()\n'
               'EndFunction',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -532,7 +532,7 @@ void main() {
           content: 'Function test()\n'
               '  Return (shouldStay() && shouldStay())\n'
               'EndFunction',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -552,6 +552,18 @@ void main() {
         expect(rCallee.name, equals('shouldStay'));
       },
     );
+
+    test('used outside of FunctionStatement should throws an error', () {
+      final tree = Tree(
+        content: 'Return true',
+        options: TreeOptions(throwWhenMissingScriptname: false),
+      );
+
+      expect(
+        () => tree.parse(),
+        throwsA(TypeMatcher<UnexpectedTokenException>()),
+      );
+    });
   });
 
   group('IfStatement', () {
@@ -561,7 +573,7 @@ void main() {
         final tree = Tree(
           content: 'If true\n'
               'EndIf',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -579,7 +591,7 @@ void main() {
         final tree = Tree(
           content: 'If (true)\n'
               'EndIf',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -597,7 +609,7 @@ void main() {
         final tree = Tree(
           content: 'If (shouldStay() == true)\n'
               'EndIf',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -618,7 +630,7 @@ void main() {
         final tree = Tree(
           content: 'If (shouldStay() == shouldStay())\n'
               'EndIf',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -639,7 +651,7 @@ void main() {
         final tree = Tree(
           content: 'If (shouldStay(true) == shouldStay())\n'
               'EndIf',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -661,7 +673,7 @@ void main() {
         final tree = Tree(
           content: 'If (shouldStay(shouldStay()) == shouldStay())\n'
               'EndIf',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -686,7 +698,7 @@ void main() {
               '  ShouldStay()\n'
               '  ShouldStay()\n'
               'EndIf',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -704,7 +716,7 @@ void main() {
         final tree = Tree(
           content: 'If t() as String\n'
               'EndIf',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -724,7 +736,7 @@ void main() {
         final tree = Tree(
           content: 'If t() as String && a() as Int\n'
               'EndIf',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -754,7 +766,7 @@ void main() {
         final tree = Tree(
           content: 'If t() == -1\n'
               'EndIf',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -781,7 +793,7 @@ void main() {
           content: 'If true\n'
               'Else\n'
               'EndIf',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final ifStatement = tree.parse().body.first as IfStatement;
@@ -803,7 +815,7 @@ void main() {
               'Else\n'
               '  String v = ""\n'
               'EndIf',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final ifStatement = tree.parse().body.first as IfStatement;
@@ -826,7 +838,7 @@ void main() {
               '  String v = ""'
               'Else\n'
               'EndIf',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final ifStatement = tree.parse().body.first as IfStatement;
@@ -858,7 +870,7 @@ void main() {
               '  String v = ""'
               'Else\n'
               'EndIf',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final ifStatement = tree.parse().body.first as IfStatement;
@@ -885,7 +897,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'shouldAssign(false, t = true)',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -910,7 +922,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'toto as String',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -927,7 +939,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'toto() as String',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -947,7 +959,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Int t = 0x0033FF',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -966,7 +978,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Int t = -1',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -986,7 +998,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Float t = -1.0',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -1006,7 +1018,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Actor t = None',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -1027,7 +1039,7 @@ void main() {
         final tree = Tree(
           content: 'While true\n'
               'EndWhile',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -1045,7 +1057,7 @@ void main() {
         final tree = Tree(
           content: 'While call() == -1\n'
               'EndWhile',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
@@ -1069,7 +1081,7 @@ void main() {
         final tree = Tree(
           content: 'Auto State Test\n'
               'EndState',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final state = tree.parse().body.first as StateStatement;
@@ -1088,7 +1100,7 @@ void main() {
               '  Int Function test()\n'
               '  EndFunction\n'
               'EndState',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final state = tree.parse().body.first as StateStatement;
@@ -1109,7 +1121,7 @@ void main() {
               '  State T\n'
               '  EndState\n'
               'EndState',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         expect(
@@ -1126,7 +1138,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Event OnTest() Native',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final event = tree.parse().body.first as EventStatement;
@@ -1145,7 +1157,7 @@ void main() {
         final tree = Tree(
           content: 'Event OnTest(String n)\n'
               'EndEvent',
-          throwWhenMissingScriptname: false,
+          options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final event = tree.parse().body.first as EventStatement;
@@ -1201,6 +1213,32 @@ void main() {
     });
   });
 
+  group('Program', () {
+    test('should have a ScriptName and two FunctionStatement', () {
+      final tree = Tree(
+        content: 'ScriptName Test\n'
+            'Function test()\n'
+            'EndFunction\n'
+            '\n'
+            'Function toto(String n)\n'
+            '  String v = n\n'
+            '  test()\n'
+            'EndFunction\n'
+            '\n'
+            'Auto State T\n'
+            '  Function test()\n'
+            '  EndFunction\n'
+            'EndState\n',
+      );
+
+      final program = tree.parse();
+
+      expect(program.body, hasLength(4));
+    });
+  });
+
+  // TODO: review start/end of nodes
+  // TODO: ImportStatement
   // TODO: self Expression can only be used inside CallExpression params
   // TODO: FunctionStatement cannot have a FunctionStatement inside
   // TODO: FunctionStatement cannot have a StateStatement inside

@@ -1,10 +1,11 @@
 import 'package:charcode/ascii.dart';
 import 'package:collection/collection.dart';
-import 'package:papyrus_parser/src/ast/property.dart';
 
 import 'exception.dart';
 import 'types.dart';
 import 'node.dart';
+import 'tree/tree.dart';
+import 'property.dart';
 
 class Context {
   List<NodeType> tokens = [];
@@ -23,7 +24,7 @@ class Context {
 class Tree {
   final String? _filename;
   final String _content;
-  final bool _throwWhenMissingScriptname;
+  final TreeOptions _options;
 
   /// The current position of the tokenizer in the _content
   int _pos = 0;
@@ -55,6 +56,12 @@ class Tree {
   /// Useful to know if _goNext() has skipParens()
   bool _foundParens = false;
 
+  /// Useful to know if parsing inside of FunctionStatement
+  bool _inFunction = false;
+
+  /// Useful to know if parsing inside of EventStatement
+  bool _inEvent = false;
+
   /// The context stack is used to superficially track syntactic
   /// context to predict whether a regular expression is allowed in a
   /// given position
@@ -75,10 +82,10 @@ class Tree {
 
   Tree({
     required String content,
-    bool throwWhenMissingScriptname = true,
+    TreeOptions options = const TreeOptions(),
     String? filename,
   })  : _content = content,
-        _throwWhenMissingScriptname = throwWhenMissingScriptname,
+        _options = options,
         _filename = filename;
 
   Program parse() {
@@ -230,8 +237,8 @@ class Tree {
   }
 
   EventStatement _parseEventStatement(EventStatement node) {
+    _inEvent = true;
     _goNext();
-
     node.id = _parseIdentifier();
     _expect(NodeType.parenL);
     node.params = _parseBindingList(NodeType.parenR, false);
@@ -279,7 +286,10 @@ class Tree {
       node.body = _parseBlock(null, [NodeType.endEventKw]);
     }
 
-    return _finishNode(node);
+    node = _finishNode(node);
+    _inEvent = false;
+
+    return node;
   }
 
   Node _parseStateStatement(
@@ -328,6 +338,16 @@ class Tree {
   }
 
   Node _parseReturnStatement(ReturnStatement node) {
+    if (_options.throwWhenReturnOutsideOfFunctionOrEvent &&
+        !_inFunction &&
+        !_inEvent) {
+      throw UnexpectedTokenException(
+        start: node.start,
+        end: _lastTokenEnd,
+        message: 'Return statement can only be used in Function or Event',
+      );
+    }
+
     _shouldSkipParens = true;
     _goNext();
     _shouldSkipParens = false;
@@ -359,9 +379,11 @@ class Tree {
       node.init = _parseMaybeAssign();
 
       if (node.init?.type != NodeType.literal) {
-        // TODO: error, property init should be constant
-
-        throw Exception();
+        throw PropertyException(
+          'Property init declaration should be a constant',
+          start: node.start,
+          end: _lastTokenEnd,
+        );
       }
     }
 
@@ -452,8 +474,6 @@ class Tree {
         fullNode.setter = setter as FunctionStatement;
 
         if (setter.params.isEmpty && setter.params.length > 1) {
-          // TODO: a setter expects only one param of the property's type
-
           throw PropertyException(
             'Setter should have one parameter with the same type as the Property',
             start: node.start,
@@ -466,8 +486,6 @@ class Tree {
         fullNode.getter = getter as FunctionStatement;
 
         if (getter.kind != node.kind) {
-          // TODO: getter return type, do not equals the property type
-
           throw PropertyException(
             'Getter should return the same type as the Property',
             start: node.start,
@@ -476,9 +494,11 @@ class Tree {
         }
 
         if (getter.params.isNotEmpty) {
-          // TODO: getter cannot have params
-
-          throw Exception();
+          throw PropertyException(
+            'Property getter cannot have parameters',
+            start: getter.start,
+            end: _pos,
+          );
         }
       }
 
@@ -576,9 +596,11 @@ class Tree {
     if (_eat(NodeType.assign)) {
       variable.init = _parseMaybeAssign();
     } else if (variable.id?.type != NodeType.id) {
-      // TODO: error unexpected
-
-      throw Exception();
+      throw UnexpectedTokenException(
+        message: 'Cannot find variable name',
+        start: variable.start,
+        end: _pos,
+      );
     }
 
     node.variable = _finishNode(variable);
@@ -613,7 +635,6 @@ class Tree {
   }
 
   Node _parseIfStatement(IfStatement node) {
-    final startType = _type;
     _shouldSkipParens = true;
     _goNext();
     _shouldSkipParens = false;
@@ -649,12 +670,15 @@ class Tree {
   }
 
   Node _parseFunctionStatement(FunctionStatement node) {
+    _inFunction = true;
     _goNext();
+    node = _parseFunction(node);
+    _inFunction = false;
 
-    return _parseFunction(node);
+    return node;
   }
 
-  Node _parseFunction(FunctionStatement node) {
+  FunctionStatement _parseFunction(FunctionStatement node) {
     node.id = _parseIdentifier();
 
     _parseFunctionParams(node);
@@ -778,9 +802,7 @@ class Tree {
     Node? left,
   ) {
     if (_type != NodeType.name) {
-      // TODO: invalid function param
-
-      throw Exception();
+      throw UnexpectedTokenException(start: startPos, end: _pos);
     }
 
     final paramKind = _value;
@@ -947,9 +969,11 @@ class Tree {
     _goNext();
 
     if (_type != NodeType.name) {
-      // TODO: missing import name
-
-      throw Exception();
+      throw UnexpectedTokenException(
+        message: 'Expected Identifier',
+        start: _pos,
+        end: _pos,
+      );
     }
 
     final imported = _startNode().toName();
@@ -967,9 +991,11 @@ class Tree {
     node.callee = _parseSubscripts(_parseExprAtom(), startPos);
 
     if (!_eat(NodeType.bracketL)) {
-      // TODO: error cannot use new without bracket
-
-      throw Exception();
+      throw UnexpectedTokenException(
+        message: 'Expected opening bracket',
+        start: _pos,
+        end: _pos,
+      );
     }
 
     final nodeSize = _startNode().toLiteral();
@@ -977,9 +1003,11 @@ class Tree {
     _goNext();
 
     if (!_eat(NodeType.num)) {
-      // TODO: error missing array size int
-
-      throw Exception();
+      throw UnexpectedTokenException(
+        message: 'Expected Number Literal',
+        start: _pos,
+        end: _pos,
+      );
     }
 
     nodeSize.type = _type;
@@ -987,9 +1015,11 @@ class Tree {
     nodeSize.raw = '$_value';
 
     if (!_eat(NodeType.bracketR)) {
-      // TODO: error missing closed bracket
-
-      throw Exception();
+      throw UnexpectedTokenException(
+        message: 'Expected closing bracket',
+        start: _pos,
+        end: _pos,
+      );
     }
 
     node.argument = _finishNode(nodeSize);
@@ -1066,11 +1096,6 @@ class Tree {
       );
     }
 
-    // TODO: maybe here for variable/property parse ?
-    // Variable = deux NodeType.name qui s'enchaîne
-    // Property = un name + property + name + flags?
-    // Utiliser Map<String, dynamic> en alias au lieu de Node class ou voir alternative
-
     return base;
   }
 
@@ -1116,7 +1141,6 @@ class Tree {
         first = false;
       } else {
         _expect(NodeType.comma);
-        // TODO: trailings comma are not allowed.
       }
 
       final elem = _parseFunctionParamMaybeDefault(_start, null);
@@ -1129,9 +1153,10 @@ class Tree {
 
   void _expect(NodeType type) {
     if (!_eat(type)) {
-      // TODO: error unexpected token
-
-      throw Exception();
+      throw UnexpectedTokenException(
+        start: _pos,
+        end: _pos,
+      );
     }
   }
 
@@ -1153,9 +1178,10 @@ class Tree {
     } else if (_isKeyword(_type)) {
       node.name = _keywordName(_type);
     } else {
-      // TODO: error unexpected token
-
-      throw Exception();
+      throw UnexpectedTokenException(
+        start: _pos,
+        end: _pos,
+      );
     }
 
     _goNext();
@@ -1246,7 +1272,7 @@ class Tree {
 
     var type = NodeType.name;
 
-    if (_throwWhenMissingScriptname &&
+    if (_options.throwWhenMissingScriptname &&
         _firstRead &&
         word.toLowerCase() != 'scriptname') {
       throw ScriptNameException(start: _start, end: _lastTokenEnd, pos: _pos);
@@ -1344,7 +1370,10 @@ class Tree {
         return _finishOp(NodeType.prefix, 1);
     }
 
-    // TODO: error unexpected char
+    throw UnexpectedTokenException(
+      start: _pos,
+      end: _pos,
+    );
   }
 
   int? _fullCodeUnitAtPos({int? pos}) {
@@ -1443,12 +1472,15 @@ class Tree {
   }
 
   int _skipDocComment({required int pos}) {
+    final startPos = pos;
     final end = _content.indexOf(r'}', pos += 1);
 
     if (end == -1) {
-      // TODO: error doc comment not finished
-
-      throw Exception();
+      throw UnexpectedTokenException(
+        message: 'Doc comment is not closed',
+        start: startPos,
+        end: _pos,
+      );
     }
 
     pos = end + 1;
@@ -1457,12 +1489,15 @@ class Tree {
   }
 
   int _skipBlockComment({required int pos}) {
+    final startPos = pos;
     final end = _content.indexOf('/;', pos += 2);
 
     if (end == -1) {
-      // TODO: error comment not finished
-
-      throw Exception();
+      throw UnexpectedTokenException(
+        message: 'Block comment is not closed',
+        start: startPos,
+        end: _content.length,
+      );
     }
 
     pos = end + 2;
@@ -1565,17 +1600,21 @@ class Tree {
     final val = _readInt(base, null);
 
     if (val == null) {
-      // TODO: expected number in radix $base
-
-      throw Exception();
+      throw UnexpectedTokenException(
+        message: 'Invalid number',
+        start: _pos,
+        end: _pos,
+      );
     }
 
     final code = _fullCodeUnitAtPos();
 
     if (code != null && _isIdentifierStart(code)) {
-      // TODO: unexpected identifier directly after number
-
-      throw Exception();
+      throw UnexpectedTokenException(
+        message: 'Unexpected Identifier',
+        start: _pos,
+        end: _pos,
+      );
     }
 
     return _finishToken(NodeType.num, val: val);
@@ -1585,7 +1624,11 @@ class Tree {
     final start = _pos;
 
     if (!startsWithDot && _readInt(10, null) == null) {
-      // TODO: error invalid number
+      throw UnexpectedTokenException(
+        message: 'Invalid number',
+        start: _pos,
+        end: _pos,
+      );
     }
 
     var next = _currentCodeUnit();
@@ -1604,14 +1647,22 @@ class Tree {
       }
 
       if (_readInt(10, null) == null) {
-        // TODO: error invalid number
+        throw UnexpectedTokenException(
+          message: 'Invalid number',
+          start: _pos,
+          end: _pos,
+        );
       }
     }
 
     final code = _fullCodeUnitAtPos();
 
     if (code != null && _isIdentifierStart(code)) {
-      // TODO: error identifier directly after number
+      throw UnexpectedTokenException(
+        message: 'Unexpected Identifier',
+        start: _pos,
+        end: _pos,
+      );
     }
 
     final raw = _content.substring(start, _pos);
@@ -1632,9 +1683,11 @@ class Tree {
 
     while (true) {
       if (_pos >= _content.length) {
-        // TODO: error string not closed
-
-        throw Exception();
+        throw UnexpectedTokenException(
+          message: 'String is not closed',
+          start: chunkStart,
+          end: _pos,
+        );
       }
 
       final ch = _currentCodeUnit();
@@ -1649,8 +1702,11 @@ class Tree {
         chunkStart = _pos;
       } else {
         if (_isNewLine(ch)) {
-          // TODO: error string not closed
-          throw Exception();
+          throw UnexpectedTokenException(
+            message: 'String is not closed',
+            start: _pos,
+            end: _pos,
+          );
         }
 
         ++_pos;
@@ -1670,9 +1726,11 @@ class Tree {
 
     while (true) {
       if (_pos >= _content.length) {
-        // TODO: error char not closed
-
-        throw Exception();
+        throw UnexpectedTokenException(
+          message: 'Unexpected Identifier',
+          start: chunkStart,
+          end: _pos,
+        );
       }
 
       final ch = _currentCodeUnit();
@@ -1682,9 +1740,11 @@ class Tree {
       }
 
       if (_isNewLine(ch) || (_pos - chunkStart) == 2) {
-        // TODO: error char not closed
-
-        throw Exception();
+        throw UnexpectedTokenException(
+          message: 'Char is not closed',
+          start: _pos,
+          end: _pos,
+        );
       }
 
       ++_pos;
@@ -1775,9 +1835,11 @@ class Tree {
     final n = _readInt(16, size);
 
     if (n == null) {
-      // TODO: error invalid \x sequence
       print(codePos);
-      throw Exception();
+      throw UnexpectedTokenException(
+        start: _pos,
+        end: _pos,
+      );
     }
 
     return n;

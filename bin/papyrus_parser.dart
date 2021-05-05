@@ -1,3 +1,11 @@
+import 'package:papyrus_parser/papyrus_parser.dart';
+
 void main(List<String> arguments) {
-  print('Hello world!');
+  final tree = Tree(
+    content: 'ScriptName Test',
+  );
+
+  final program = tree.parse();
+
+  print('Name is ${(program.body.first as ScriptName).id?.name}');
 }

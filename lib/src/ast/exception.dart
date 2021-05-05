@@ -3,7 +3,7 @@ abstract class NodeException {
   final int _end;
   final int? _pos;
 
-  NodeException({
+  const NodeException({
     required int start,
     required int end,
     int? pos,
@@ -13,9 +13,9 @@ abstract class NodeException {
 }
 
 class ScriptNameException extends NodeException {
-  String? message;
+  final String? message;
 
-  ScriptNameException({
+  const ScriptNameException({
     this.message,
     required int start,
     required int end,
@@ -33,32 +33,30 @@ class ScriptNameException extends NodeException {
 }
 
 class UnexpectedTokenException extends NodeException {
-  final String? _expected;
+  final String? _message;
 
-  UnexpectedTokenException({
+  const UnexpectedTokenException({
     required int start,
     required int end,
     int? pos,
-    String? expected,
-  })  : _expected = expected,
+    String? message,
+  })  : _message = message,
         super(start: start, end: end, pos: pos);
 
   @override
   String toString() {
-    final buffer = StringBuffer('Unexpected token at $_pos.');
-
-    if (_expected != null) {
-      buffer.write(' Expected $_expected');
+    if (_message != null) {
+      return 'UnexpectedTokenException: [$_start:$_end] $_message';
     }
 
-    return 'UnexpectedTokenException: [$_start:$_end] ${buffer.toString()}';
+    return 'UnexpectedTokenException: [$_start:$_end] Unexpected token at $_pos.';
   }
 }
 
 class PropertyException extends NodeException {
   final String _message;
 
-  PropertyException(
+  const PropertyException(
     String message, {
     required int start,
     required int end,
@@ -75,7 +73,7 @@ class PropertyException extends NodeException {
 class BlockStatementException extends NodeException {
   final String _message;
 
-  BlockStatementException(
+  const BlockStatementException(
     String message, {
     required int start,
     required int end,
@@ -92,7 +90,7 @@ class BlockStatementException extends NodeException {
 class FunctionFlagException extends NodeException {
   final String _flag;
 
-  FunctionFlagException({
+  const FunctionFlagException({
     required String flag,
     required int start,
     required int end,
@@ -109,7 +107,7 @@ class FunctionFlagException extends NodeException {
 class StateStatementException extends NodeException {
   final String _message;
 
-  StateStatementException(
+  const StateStatementException(
     String message, {
     required int start,
     required int end,
@@ -126,7 +124,7 @@ class StateStatementException extends NodeException {
 class EventFlagException extends NodeException {
   final String _flag;
 
-  EventFlagException({
+  const EventFlagException({
     required String flag,
     required int start,
     required int end,
@@ -143,7 +141,7 @@ class EventFlagException extends NodeException {
 class ParentMemberException extends NodeException {
   final String _message;
 
-  ParentMemberException(
+  const ParentMemberException(
     String message, {
     required int start,
     required int end,
