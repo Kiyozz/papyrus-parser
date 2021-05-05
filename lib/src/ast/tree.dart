@@ -32,7 +32,8 @@ class Tree {
   /// Type of current token
   NodeType _type = NodeType.eof;
 
-  bool _firstRead = true;
+  /// Is first word read
+  bool _isFirstRead = true;
 
   /// For tokens that include more information than their type, the value
   dynamic? _value;
@@ -509,6 +510,14 @@ class Tree {
   }
 
   Node _parseScriptNameStatement(ScriptNameStatement node) {
+    if (_scriptName != null) {
+      throw ScriptNameException(
+        message: 'ScriptName cannot appears more than once in a script',
+        start: _pos,
+        end: _pos,
+      );
+    }
+
     _goNext();
 
     if (_type != NodeType.name) {
@@ -522,7 +531,7 @@ class Tree {
     node.id = _parseIdentifier();
 
     final filename = _filename;
-    if (filename != null) {
+    if (_options.throwWhenScriptnameMismatchFilename && filename != null) {
       final id = node.id as Identifier;
 
       if (id.name.toLowerCase() != filename.toLowerCase()) {
@@ -1273,7 +1282,7 @@ class Tree {
     var type = NodeType.name;
 
     if (_options.throwWhenMissingScriptname &&
-        _firstRead &&
+        _isFirstRead &&
         word.toLowerCase() != 'scriptname') {
       throw ScriptNameException(start: _start, end: _lastTokenEnd, pos: _pos);
     }
@@ -1282,7 +1291,7 @@ class Tree {
       type = keywordsMap[word.toLowerCase()] ?? type;
     }
 
-    _firstRead = false;
+    _isFirstRead = false;
     _finishToken(type, val: word);
   }
 

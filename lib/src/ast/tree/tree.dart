@@ -1,5 +1,6 @@
 class TreeOptions {
   final bool throwWhenMissingScriptname;
+  final bool throwWhenScriptnameMismatchFilename;
   final bool throwWhenReturnOutsideOfFunctionOrEvent;
   final bool throwWhenIfOutsideOfFunctionOrEvent;
   final bool throwWhenCallExpressionOutsideOfFunctionOrEvent;
@@ -8,6 +9,7 @@ class TreeOptions {
 
   const TreeOptions({
     this.throwWhenMissingScriptname = true,
+    this.throwWhenScriptnameMismatchFilename = true,
     this.throwWhenReturnOutsideOfFunctionOrEvent = true,
     this.throwWhenIfOutsideOfFunctionOrEvent = true,
     this.throwWhenCallExpressionOutsideOfFunctionOrEvent = true,

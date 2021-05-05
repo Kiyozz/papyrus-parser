@@ -57,6 +57,20 @@ void main() {
         expect(() => tree.parse(), throwsA(TypeMatcher<ScriptNameException>()));
       },
     );
+
+    test(
+      'that appears more than once should throws an error',
+      () {
+        final tree = Tree(
+          content: 'ScriptName test\nScriptName toto',
+          options: const TreeOptions(
+            throwWhenScriptnameMismatchFilename: false,
+          ),
+        );
+
+        expect(() => tree.parse(), throwsA(TypeMatcher<ScriptNameException>()));
+      },
+    );
   });
 
   group('FunctionStatement', () {
@@ -1300,7 +1314,6 @@ void main() {
   // TODO: review start/end of nodes
   // TODO: process line/column
   // TODO: ImportStatement
-  // TODO: ScriptName cannot appears more than once
   // TODO: throw when while, call, cast, if is used outside of function
   // TODO: self Expression can only be used inside CallExpression params
   // TODO: FunctionStatement cannot have a FunctionStatement inside
