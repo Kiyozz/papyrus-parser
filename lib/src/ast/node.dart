@@ -16,8 +16,8 @@ class Node {
     return Program(start: start, end: end);
   }
 
-  ScriptName toScriptName() {
-    return ScriptName(start: start, end: end);
+  ScriptNameStatement toScriptNameStatement() {
+    return ScriptNameStatement(start: start, end: end);
   }
 
   ScriptNameFlagDeclaration toScriptNameFlagDeclaration() {
@@ -141,7 +141,7 @@ class Program extends Node {
   }) : super(start: start, end: end);
 }
 
-class ScriptName extends Node {
+class ScriptNameStatement extends Node {
   Identifier? id;
   ExtendsDeclaration? extendsDeclaration;
   List<ScriptNameFlagDeclaration> flags = [];
@@ -156,7 +156,7 @@ class ScriptName extends Node {
     return flag != null;
   }
 
-  ScriptName({
+  ScriptNameStatement({
     required int start,
     int end = 0,
   }) : super(start: start, end: end);

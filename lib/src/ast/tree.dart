@@ -78,7 +78,7 @@ class Tree {
 
   int get _next => _content.codeUnitAt(_pos + 1);
 
-  ScriptName? _scriptName;
+  ScriptNameStatement? _scriptName;
 
   Tree({
     required String content,
@@ -139,7 +139,7 @@ class Tree {
 
     switch (startType) {
       case NodeType.scriptNameKw:
-        return _parseScriptNameStatement(node.toScriptName());
+        return _parseScriptNameStatement(node.toScriptNameStatement());
       case NodeType.functionKw:
         return _parseFunctionStatement(node.toFunctionStatement());
       case NodeType.ifKw:
@@ -508,7 +508,7 @@ class Tree {
     return _finishNode(node);
   }
 
-  Node _parseScriptNameStatement(ScriptName node) {
+  Node _parseScriptNameStatement(ScriptNameStatement node) {
     _goNext();
 
     if (_type != NodeType.name) {
