@@ -3,6 +3,7 @@ enum ScriptNameFlag { conditional, hidden }
 enum PropertyFlag { conditional, hidden, auto, autoReadonly }
 
 enum FunctionFlag { global, native }
+enum EventFlag { native }
 
 enum StateFlag { auto }
 

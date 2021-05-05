@@ -118,6 +118,14 @@ class Node {
   StateStatement toStateStatement() {
     return StateStatement(start: start, end: end);
   }
+
+  EventStatement toEventStatement() {
+    return EventStatement(start: start, end: end);
+  }
+
+  EventFlagDeclaration toEventFlagDeclaration() {
+    return EventFlagDeclaration(start: start, end: end);
+  }
 }
 
 class Program extends Node {
@@ -561,7 +569,7 @@ class StateStatement extends Node {
     if (elements.isEmpty) return true;
 
     final state = elements.where((elem) {
-      return elem is! FunctionStatement /* && elem is EventStatement */;
+      return elem is! FunctionStatement && elem is! EventStatement;
     });
 
     if (state.isEmpty) return true;
@@ -573,4 +581,51 @@ class StateStatement extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+}
+
+class EventStatement extends Node {
+  @override
+  NodeType? type = NodeType.eventKw;
+  NodeType? endType = NodeType.endEventKw;
+
+  Identifier? id;
+  BlockStatement? body;
+  List<Node> params = [];
+  List<EventFlagDeclaration> flags = [];
+
+  EventStatement({
+    required int start,
+    int end = 0,
+  }) : super(start: start, end: end);
+
+  bool get isNative {
+    final flag = flags.firstWhereOrNull((elem) {
+      return elem.flag == EventFlag.native;
+    });
+
+    return flag != null;
+  }
+}
+
+class EventFlagDeclaration extends Node {
+  @override
+  NodeType? type = NodeType.flagKw;
+
+  EventFlag? flag;
+
+  EventFlagDeclaration({
+    required int start,
+    int end = 0,
+  }) : super(start: start, end: end);
+
+  EventFlag flagFromType(NodeType type) {
+    switch (type) {
+      case NodeType.nativeKw:
+        return EventFlag.native;
+      default:
+        // TODO: error, unexpected flag
+
+        throw Exception();
+    }
+  }
 }

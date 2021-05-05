@@ -120,7 +120,10 @@ class Tree {
     _nextToken();
   }
 
-  Node _parseStatement({NodeType? context}) {
+  Node _parseStatement({
+    List<NodeType>? context,
+    bool initialNext = false,
+  }) {
     final startType = _type;
     final node = _startNode();
 
@@ -130,6 +133,7 @@ class Tree {
       case NodeType.functionKw:
         return _parseFunctionStatement(node.toFunctionStatement());
       case NodeType.ifKw:
+      case NodeType.elseIfKw:
         return _parseIfStatement(node.toIfStatement());
       case NodeType.whileKw:
         return _parseWhileStatement(node.toWhileStatement());
@@ -137,6 +141,8 @@ class Tree {
         return _parseStateStatement(node.toStateStatement());
       case NodeType.returnKw:
         return _parseReturnStatement(node.toReturnStatement());
+      case NodeType.eventKw:
+        return _parseEventStatement(node.toEventStatement());
       default:
         final startPos = _start;
 
@@ -202,7 +208,12 @@ class Tree {
         }
 
         if (_isNewLine(_currentCodeUnit())) {
-          return _parseBlock(node.toBlockStatement(), startType);
+          return _parseBlock(
+            node.toBlockStatement(),
+            context ?? [_close(startType)],
+            initialNext: initialNext,
+            next: true,
+          );
         }
 
         // final maybeName = _value;
@@ -213,6 +224,59 @@ class Tree {
           expr: expr,
         );
     }
+  }
+
+  EventStatement _parseEventStatement(EventStatement node) {
+    _goNext();
+
+    node.id = _parseIdentifier();
+    _expect(NodeType.parenL);
+    node.params = _parseBindingList(NodeType.parenR, false);
+
+    var hasNative = false;
+
+    EventFlagException throwError() {
+      return EventFlagException(
+        flag: _value,
+        start: _start,
+        end: _end,
+      );
+    }
+
+    EventFlagDeclaration createFlag(EventFlag flag) {
+      final declaration = _startNode().toEventFlagDeclaration();
+      declaration.flag = flag;
+
+      return _finishNode(declaration);
+    }
+
+    if (_hasNewLineBetweenLastToken() && _type == NodeType.nativeKw) {
+      throw throwError();
+    }
+
+    while (!_hasNewLineBetweenLastToken() && _type != NodeType.eof) {
+      if (_type != NodeType.nativeKw) {
+        throw throwError();
+      }
+
+      if (_type == NodeType.nativeKw && hasNative) {
+        throw throwError();
+      }
+
+      if (_type == NodeType.nativeKw) {
+        node.flags.add(createFlag(EventFlag.native));
+        hasNative = true;
+        _goNext();
+      } else {
+        throw throwError();
+      }
+    }
+
+    if (!node.isNative) {
+      node.body = _parseBlock(null, [NodeType.endEventKw]);
+    }
+
+    return _finishNode(node);
   }
 
   Node _parseStateStatement(
@@ -229,7 +293,7 @@ class Tree {
     _goNext();
 
     node.id = _parseIdentifier();
-    node.body = _parseBlock(null, NodeType.stateKw);
+    node.body = _parseBlock(null, [NodeType.endStateKw]);
 
     if (!node.isValid) {
       throw StateStatementException(
@@ -365,7 +429,7 @@ class Tree {
 
       var block = _parseBlock(
         _startNode().toBlockStatement(),
-        NodeType.propertyKw,
+        [NodeType.endPropertyKw],
       );
 
       if (block.body.isEmpty) {
@@ -525,12 +589,13 @@ class Tree {
       _goNext();
     }
 
-    node.consequent = _parseBlock(null, NodeType.whileKw);
+    node.consequent = _parseBlock(null, [NodeType.endWhileKw]);
 
     return _finishNode(node);
   }
 
   Node _parseIfStatement(IfStatement node) {
+    final startType = _type;
     _shouldSkipParens = true;
     _goNext();
     _shouldSkipParens = false;
@@ -542,13 +607,25 @@ class Tree {
       _goNext();
     }
 
-    node.consequent = _parseBlock(null, NodeType.ifKw);
-    node.alternate = _eat(NodeType.elseKw) || _eat(NodeType.elseIfKw)
-        ? _parseStatement(
-            context:
-                _eat(NodeType.elseKw) ? NodeType.elseKw : NodeType.elseIfKw,
-          )
-        : null;
+    node.consequent = _parseBlock(
+      null,
+      [
+        NodeType.elseKw,
+        NodeType.elseIfKw,
+        NodeType.endIfKw,
+      ],
+      next: false,
+    );
+
+    if (_type == NodeType.elseKw) {
+      _goNext();
+
+      node.alternate = _parseBlock(null, [NodeType.endIfKw]);
+    } else if (_type == NodeType.elseIfKw) {
+      node.alternate = _parseIfStatement(_startNode().toIfStatement());
+    } else {
+      _goNext();
+    }
 
     return _finishNode(node);
   }
@@ -626,29 +703,42 @@ class Tree {
   void _parseFunctionBody(FunctionStatement node) {
     if (node.isNative) return;
 
-    node.body = [_parseBlock(null, NodeType.functionKw)];
+    node.body = [
+      _parseBlock(null, [NodeType.endFunctionKw])
+    ];
   }
 
-  BlockStatement _parseBlock(BlockStatement? usedNode, NodeType type) {
+  BlockStatement _parseBlock(
+    BlockStatement? usedNode,
+    List<NodeType> closingTypes, {
+    bool initialNext = false,
+    bool next = true,
+  }) {
     final node = usedNode ?? _startNode().toBlockStatement();
 
-    final closeType = _close(type);
-
     if (_type == NodeType.eof) {
+      final missingTypes = closingTypes.map((t) => t.name).join('/');
+
       throw BlockStatementException(
-        'Missing "${closeType.name}"',
+        'Missing "$missingTypes"',
         start: node.start,
         end: _end,
       );
     }
 
-    while (_type != closeType) {
+    if (initialNext) {
+      _goNext();
+    }
+
+    while (!closingTypes.contains(_type)) {
       final statement = _parseStatement();
 
       node.body.add(statement);
     }
 
-    _goNext();
+    if (next) {
+      _goNext();
+    }
 
     return _finishNode(node);
   }
@@ -1662,6 +1752,8 @@ class Tree {
       case NodeType.functionKw:
         return NodeType.endFunctionKw;
       case NodeType.ifKw:
+      case NodeType.elseIfKw:
+      case NodeType.elseKw:
         return NodeType.endIfKw;
       case NodeType.whileKw:
         return NodeType.endWhileKw;

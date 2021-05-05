@@ -535,7 +535,8 @@ void main() {
       'should have a Literal and no parenthesis',
       () {
         final tree = Tree(
-          content: 'If true\nEndIf',
+          content: 'If true\n'
+              'EndIf',
           throwWhenMissingScriptname: false,
         );
 
@@ -552,7 +553,8 @@ void main() {
       'should have a Literal and parenthesis',
       () {
         final tree = Tree(
-          content: 'If (true)\nEndIf',
+          content: 'If (true)\n'
+              'EndIf',
           throwWhenMissingScriptname: false,
         );
 
@@ -633,7 +635,7 @@ void main() {
       'should have a LogicalExpression with two CallExpression, one with one param that is a CallExpression, and parenthesis',
       () {
         final tree = Tree(
-          content: 'If (shouldStay(shouldStay()) == shouldStay())'
+          content: 'If (shouldStay(shouldStay()) == shouldStay())\n'
               'EndIf',
           throwWhenMissingScriptname: false,
         );
@@ -656,7 +658,7 @@ void main() {
       'should have a Literal, parenthesis, and a BlockStatement with two CallExpression',
       () {
         final tree = Tree(
-          content: 'If (true)'
+          content: 'If (true)\n'
               '  ShouldStay()\n'
               '  ShouldStay()\n'
               'EndIf',
@@ -745,6 +747,110 @@ void main() {
         expect(rightTest.operator, '-');
         final rightLiteral = rightTest.argument as Literal;
         expect(rightLiteral.value, equals(1));
+      },
+    );
+
+    test(
+      'should have an Else alternate statement',
+      () {
+        final tree = Tree(
+          content: 'If true\n'
+              'Else\n'
+              'EndIf',
+          throwWhenMissingScriptname: false,
+        );
+
+        final ifStatement = tree.parse().body.first as IfStatement;
+        final test = ifStatement.test as Literal;
+        final consequent = ifStatement.consequent as BlockStatement;
+        final alternate = ifStatement.alternate as BlockStatement;
+
+        expect(test.value, equals(true));
+        expect(consequent.body, isEmpty);
+        expect(alternate.body, isEmpty);
+      },
+    );
+
+    test(
+      'should have an alternate statement with a VariableDeclaration',
+      () {
+        final tree = Tree(
+          content: 'If true\n'
+              'Else\n'
+              '  String v = ""\n'
+              'EndIf',
+          throwWhenMissingScriptname: false,
+        );
+
+        final ifStatement = tree.parse().body.first as IfStatement;
+        final test = ifStatement.test as Literal;
+        final consequent = ifStatement.consequent as BlockStatement;
+        final alternate = ifStatement.alternate as BlockStatement;
+
+        expect(test.value, equals(true));
+        expect(consequent.body, isEmpty);
+        expect(alternate.body.first, TypeMatcher<VariableDeclaration>());
+      },
+    );
+
+    test(
+      'should have an alternate statement with a ElseIf, Else statement',
+      () {
+        final tree = Tree(
+          content: 'If true\n'
+              'ElseIf false\n'
+              '  String v = ""'
+              'Else\n'
+              'EndIf',
+          throwWhenMissingScriptname: false,
+        );
+
+        final ifStatement = tree.parse().body.first as IfStatement;
+        final test = ifStatement.test as Literal;
+        final elseIfStatement = ifStatement.alternate as IfStatement;
+        final elseIfTest = elseIfStatement.test as Literal;
+        final elseIfConsequent = elseIfStatement.consequent as BlockStatement;
+        final elseIfAlternate = elseIfStatement.alternate as BlockStatement;
+
+        expect(test.value, equals(true));
+        expect(elseIfTest.value, equals(false));
+        expect(elseIfConsequent.body.first, TypeMatcher<VariableDeclaration>());
+        expect(elseIfAlternate.body, isEmpty);
+      },
+    );
+
+    test(
+      'should have multiple alternate statement ElseIf, Else',
+      () {
+        final tree = Tree(
+          content: 'If true\n'
+              'ElseIf false\n'
+              '  String v = ""'
+              'ElseIf false\n'
+              '  String v = ""'
+              'ElseIf false\n'
+              '  String v = ""'
+              'ElseIf false\n'
+              '  String v = ""'
+              'Else\n'
+              'EndIf',
+          throwWhenMissingScriptname: false,
+        );
+
+        final ifStatement = tree.parse().body.first as IfStatement;
+        final test = ifStatement.test as Literal;
+
+        expect(test.value, equals(true));
+
+        var currentIfStatement = ifStatement.alternate;
+        var numberOfIfStatement = 0;
+
+        while (currentIfStatement is IfStatement) {
+          numberOfIfStatement++;
+          currentIfStatement = currentIfStatement.alternate;
+        }
+
+        expect(numberOfIfStatement, equals(4));
       },
     );
   });
@@ -990,5 +1096,46 @@ void main() {
     );
   });
 
-  // TODO: EventStatement
+  group('EventStatement', () {
+    test(
+      'should have Native flag',
+      () {
+        final tree = Tree(
+          content: 'Event OnTest() Native',
+          throwWhenMissingScriptname: false,
+        );
+
+        final event = tree.parse().body.first as EventStatement;
+        expect(event.body, isNull);
+        expect(event.flags, hasLength(1));
+        final flag = event.flags.first;
+        expect(flag.flag, equals(EventFlag.native));
+        final id = event.id as Identifier;
+        expect(id.name, equals('OnTest'));
+      },
+    );
+
+    test(
+      'should have one parameter',
+      () {
+        final tree = Tree(
+          content: 'Event OnTest(String n)\n'
+              'EndEvent',
+          throwWhenMissingScriptname: false,
+        );
+
+        final event = tree.parse().body.first as EventStatement;
+        expect(event.flags, isEmpty);
+        final id = event.id as Identifier;
+        expect(id.name, equals('OnTest'));
+        final params = event.params;
+        expect(params, hasLength(1));
+        final param = event.params.first as VariableDeclaration;
+        final variable = param.variable as Variable;
+        expect(variable.init, isNull);
+        expect(variable.kind, equals('String'));
+        expect(variable.id?.name, equals('n'));
+      },
+    );
+  });
 }

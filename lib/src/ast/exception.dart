@@ -115,3 +115,20 @@ class StateStatementException extends NodeException {
     return 'StateStatementException: [$_start:$_end] $_message';
   }
 }
+
+class EventFlagException extends NodeException {
+  final String _flag;
+
+  EventFlagException({
+    required String flag,
+    required int start,
+    required int end,
+    int? pos,
+  })  : _flag = flag,
+        super(start: start, end: end, pos: pos);
+
+  @override
+  String toString() {
+    return 'EventFlagException: [$_start:$_end] unexpected flag $_flag';
+  }
+}
