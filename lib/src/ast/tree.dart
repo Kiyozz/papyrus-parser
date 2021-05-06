@@ -50,13 +50,6 @@ class Tree {
   /// Position information for the previous token
   int _lastTokenEnd = 0;
 
-  /// Skip parens read. Useful for parsing if, elseif, while,
-  /// ... statement because parens are optional
-  bool _shouldSkipParens = false;
-
-  /// Useful to know if _goNext() has skipParens()
-  bool _foundParens = false;
-
   /// Useful to know if parsing inside of FunctionStatement
   bool _inFunction = false;
 
@@ -178,8 +171,42 @@ class Tree {
           }
         }
 
-        if (startType == NodeType.name) {
-          final potentialVariableType = _value;
+        final currentPos = _skipSpace();
+        final currentCode = _fullCodeUnitAtPos(pos: currentPos);
+        final isName = startType == NodeType.name;
+        final nextPos = _skipSpace(startPos: currentPos + 1);
+        final nextCode = _fullCodeUnitAtPos(pos: nextPos);
+        final isDot = currentCode == $dot;
+        final isOpenBracket = currentCode == $open_bracket;
+        final isNextCloseBracket = nextCode == $close_bracket;
+        final isNotMember =
+            isOpenBracket ? isOpenBracket && isNextCloseBracket : true;
+
+        if (isName && !isDot && isNotMember) {
+          var potentialVariableType = _value;
+          var isArray = false;
+          var nextPos = _skipSpace();
+          var nextCode = _fullCodeUnitAtPos(pos: nextPos);
+
+          switch (nextCode) {
+            case $equal:
+            case $plus:
+            case $minus:
+            case $asterisk:
+            case $slash:
+            case $percent:
+              return _parseExpression();
+            case $open_bracket:
+              _goNext();
+              nextPos = _skipSpace();
+              nextCode = _fullCodeUnitAtPos(pos: nextPos);
+
+              if (nextCode == $close_bracket) {
+                _goNext();
+                potentialVariableType += '[]';
+                isArray = true;
+              }
+          }
 
           _goNext();
 
@@ -221,6 +248,7 @@ class Tree {
             return _parseVariableDeclaration(
               kind: potentialVariableType,
               start: startPos,
+              isArray: isArray,
             );
           }
         }
@@ -321,7 +349,7 @@ class Tree {
       throw StateStatementException(
         'StateStatement can only contains FunctionStatement or EventStatement',
         start: node.start,
-        end: node.id?.end ?? _pos,
+        end: node.id.end,
       );
     }
 
@@ -359,17 +387,10 @@ class Tree {
       );
     }
 
-    _shouldSkipParens = true;
     _goNext();
-    _shouldSkipParens = false;
-    final foundParens = _foundParens;
 
     if (!_hasNewLineBetweenLastToken()) {
       node.argument = _parseExpression();
-    }
-
-    if (foundParens) {
-      _goNext();
     }
 
     return _finishNode(node);
@@ -447,7 +468,7 @@ class Tree {
       final hasEndProperty = _content.contains(_endProperty, _start);
 
       if (!hasEndProperty) {
-        final name = node.id?.name ?? 'unknown';
+        final name = node.id.name;
 
         throw PropertyException(
           'Missing "EndProperty" for "$name" Property',
@@ -541,9 +562,7 @@ class Tree {
 
     final filename = _filename;
     if (_options.throwWhenScriptnameMismatchFilename && filename != null) {
-      final id = node.id as Identifier;
-
-      if (id.name.toLowerCase() != filename.toLowerCase()) {
+      if (node.id.name.toLowerCase() != filename.toLowerCase()) {
         throw ScriptNameException(
           start: node.start,
           end: _pos,
@@ -603,16 +622,18 @@ class Tree {
   VariableDeclaration _parseVariableDeclaration({
     required int start,
     required String kind,
+    required bool isArray,
   }) {
     final node = _startNodeAt(start).toVariableDeclaration();
     final variable = _startNodeAt(start).toVariable();
 
     variable.id = _parseIdentifier();
     variable.kind = kind;
+    variable.isArray = isArray;
 
     if (_eat(NodeType.assign)) {
       variable.init = _parseMaybeAssign();
-    } else if (variable.id?.type != NodeType.id) {
+    } else if (variable.id.type != NodeType.id) {
       throw UnexpectedTokenException(
         message: 'Cannot find variable name',
         start: variable.start,
@@ -635,33 +656,18 @@ class Tree {
   }
 
   Node _parseWhileStatement(WhileStatement node) {
-    _shouldSkipParens = true;
     _goNext();
-    _shouldSkipParens = false;
-    final foundParens = _foundParens;
 
     node.test = _parseExpression();
-
-    if (foundParens) {
-      _goNext();
-    }
-
     node.consequent = _parseBlock(null, [NodeType.endWhileKw]);
 
     return _finishNode(node);
   }
 
   Node _parseIfStatement(IfStatement node) {
-    _shouldSkipParens = true;
     _goNext();
-    _shouldSkipParens = false;
-    final foundParens = _foundParens;
 
     node.test = _parseExpression();
-
-    if (foundParens) {
-      _goNext();
-    }
 
     node.consequent = _parseBlock(
       null,
@@ -762,9 +768,7 @@ class Tree {
   void _parseFunctionBody(FunctionStatement node) {
     if (node.isNative) return;
 
-    node.body = [
-      _parseBlock(null, [NodeType.endFunctionKw])
-    ];
+    node.body = _parseBlock(null, [NodeType.endFunctionKw]);
   }
 
   BlockStatement _parseBlock(
@@ -803,15 +807,7 @@ class Tree {
   }
 
   Node _parseExpression() {
-    final expr = _parseMaybeAssign();
-
-    if (_type == NodeType.lineTerminator) {
-      // TODO: handle line terminator
-
-      throw UnimplementedError();
-    }
-
-    return expr;
+    return _parseMaybeAssign();
   }
 
   VariableDeclaration _parseFunctionParamMaybeDefault(
@@ -821,14 +817,27 @@ class Tree {
     if (_type != NodeType.name) {
       throw UnexpectedTokenException(start: startPos, end: _pos);
     }
-
-    final paramKind = _value;
+    var isArray = false;
+    var paramKind = _value;
 
     _goNext();
+
+    if (_type == NodeType.bracketL) {
+      final nextPos = _skipSpace();
+      final nextCode = _fullCodeUnitAtPos(pos: nextPos);
+
+      if (nextCode == $close_bracket) {
+        paramKind += '[]';
+        isArray = true;
+        _goNext();
+        _goNext();
+      }
+    }
 
     return _parseVariableDeclaration(
       kind: paramKind,
       start: startPos,
+      isArray: isArray,
     );
   }
 
@@ -839,10 +848,11 @@ class Tree {
       final n = _startNode().toAssignExpression();
 
       n.left = left;
+      n.operator = _value;
 
       _goNext();
 
-      n.right = _parseExprAtom();
+      n.right = _parseMaybeAssign();
 
       return _finishNode(n);
     }
@@ -876,6 +886,11 @@ class Tree {
     if (_type == NodeType.logicalOr ||
         _type == NodeType.logicalAnd ||
         _type == NodeType.binary ||
+        _type == NodeType.plusMinus ||
+        _type == NodeType.relational ||
+        _type == NodeType.star ||
+        _type == NodeType.slash ||
+        _type == NodeType.modulo ||
         _type == NodeType.equality) {
       final logical =
           _type == NodeType.logicalOr || _type == NodeType.logicalAnd;
@@ -897,14 +912,14 @@ class Tree {
     return left;
   }
 
-  LogicalExpression _buildBinary(
+  BinaryExpression _buildBinary(
     int startPos,
     Node left,
     Node right,
     String op, {
     bool logical = false,
   }) {
-    final node = _startNodeAt(startPos).toLogical();
+    final node = _startNodeAt(startPos).toBinaryExpression();
 
     node.left = left;
     node.operator = op;
@@ -960,6 +975,9 @@ class Tree {
       case NodeType.char:
         return _parseLiteral(_value);
 
+      case NodeType.parenL:
+        return _parseParenAndDistinguishExpression();
+
       case NodeType.noneKw:
       case NodeType.falseKw:
       case NodeType.trueKw:
@@ -971,11 +989,30 @@ class Tree {
 
         return _finishNode(literalNode);
       case NodeType.newKw:
-        return _parseNew();
+        return _parseNewExpression();
       default:
         // TODO: unexpected I think
         throw Exception();
     }
+  }
+
+  Node _parseParenAndDistinguishExpression() {
+    Node? expr;
+    var first = true;
+    _goNext();
+
+    while (_type != NodeType.parenR) {
+      first ? first = false : _expect(NodeType.comma);
+      expr = _parseMaybeAssign();
+    }
+
+    _expect(NodeType.parenR);
+
+    if (expr == null) {
+      throw UnexpectedTokenException(start: _lastTokenEnd, end: _lastTokenEnd);
+    }
+
+    return expr;
   }
 
   Node _parseImport() {
@@ -1004,45 +1041,29 @@ class Tree {
     return _finishNode(node);
   }
 
-  Node _parseNew() {
+  Node _parseNewExpression() {
     final node = _startNode().toNewExpression();
-    final startPos = _start;
+    final meta = _parseIdentifier();
 
-    node.callee = _parseSubscripts(_parseExprAtom(), startPos);
+    node.meta = meta;
+    node.argument = _parseExprSubscripts();
+    final argument = node.argument;
 
-    if (!_eat(NodeType.bracketL)) {
+    if (argument is! MemberExpression) {
       throw UnexpectedTokenException(
-        message: 'Expected opening bracket',
-        start: _pos,
-        end: _pos,
+        start: argument.start,
+        end: argument.end,
       );
     }
 
-    final nodeSize = _startNode().toLiteral();
-
-    _goNext();
-
-    if (!_eat(NodeType.num)) {
+    if (argument.property is! Literal) {
       throw UnexpectedTokenException(
-        message: 'Expected Number Literal',
-        start: _pos,
-        end: _pos,
+        message:
+            'NewExpression array size must be an Int Literal. Got ${argument.property.runtimeType}',
+        start: argument.start,
+        end: argument.end,
       );
     }
-
-    nodeSize.type = _type;
-    nodeSize.value = _value;
-    nodeSize.raw = '$_value';
-
-    if (!_eat(NodeType.bracketR)) {
-      throw UnexpectedTokenException(
-        message: 'Expected closing bracket',
-        start: _pos,
-        end: _pos,
-      );
-    }
-
-    node.argument = _finishNode(nodeSize);
 
     return _finishNode(node);
   }
@@ -1075,7 +1096,7 @@ class Tree {
 
       if (base is MemberExpression &&
           base.object is Identifier &&
-          base.object?.type == NodeType.parentKw) {
+          base.object.type == NodeType.parentKw) {
         final object = base.object as Identifier;
 
         throw ParentMemberException(
@@ -1215,21 +1236,6 @@ class Tree {
 
     if (_pos >= _content.length) return _finishToken(NodeType.eof);
 
-    if (_shouldSkipParens) {
-      final startPos = _pos;
-      _pos = _skipParens();
-
-      if (_pos > startPos) {
-        _foundParens = true;
-      }
-
-      _start = _pos;
-    } else {
-      _foundParens = false;
-    }
-
-    if (_pos >= _content.length) return _finishToken(NodeType.eof);
-
     final code = _fullCodeUnitAtPos();
 
     if (code == null) return;
@@ -1238,7 +1244,30 @@ class Tree {
   }
 
   void _readToken(int code) {
-    if (_isIdentifierStart(code) || code == $backslash) {
+    if (code == $backslash) {
+      ++_pos;
+      _goNext();
+      final contentFromLastTokenAndPos =
+          _content.substring(_lastTokenEnd, _end);
+      final backslashes = contentFromLastTokenAndPos.codeUnits
+          .where((code) => code == $backslash);
+
+      if (backslashes.length > 1) {
+        final posFirstBackslash =
+            _content.codeUnits.indexOf($backslash, _lastTokenEnd);
+
+        throw UnexpectedTokenException(
+          message: 'Unexpected token. '
+              'Expected a new line after a LineTerminator',
+          start: posFirstBackslash,
+          end: _end,
+        );
+      }
+
+      return;
+    }
+
+    if (_isIdentifierStart(code)) {
       return _readWord();
     }
 
@@ -1410,30 +1439,8 @@ class Tree {
     return (code << 10) + next - 0x35fdc00 /* 56613888 */;
   }
 
-  int _skipParens() {
-    var pos = _pos;
-
-    loop:
-    while (pos < _content.length) {
-      final ch = _currentCodeUnit(pos: pos);
-
-      switch (ch) {
-        case $open_paren:
-          ++pos;
-          break;
-        case $close_paren:
-          ++pos;
-          break;
-        default:
-          break loop;
-      }
-    }
-
-    return pos;
-  }
-
-  int _skipSpace() {
-    var pos = _pos;
+  int _skipSpace({int? startPos}) {
+    var pos = startPos ?? _pos;
 
     loop:
     while (pos < _content.length) {

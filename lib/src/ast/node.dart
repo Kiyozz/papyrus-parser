@@ -3,7 +3,7 @@ import 'package:papyrus_parser/papyrus_parser.dart';
 import 'types.dart';
 
 class Node {
-  NodeType? type;
+  late NodeType type;
   int start;
   int end;
 
@@ -60,8 +60,8 @@ class Node {
     return Identifier(start: start, end: end);
   }
 
-  LogicalExpression toLogical() {
-    return LogicalExpression(start: start, end: end);
+  BinaryExpression toBinaryExpression() {
+    return BinaryExpression(start: start, end: end);
   }
 
   NewExpression toNewExpression() {
@@ -129,7 +129,7 @@ class Program extends Node {
   List<Node> body = [];
 
   @override
-  NodeType? type = NodeType.program;
+  NodeType type = NodeType.program;
 
   Program({
     required int start,
@@ -138,12 +138,12 @@ class Program extends Node {
 }
 
 class ScriptNameStatement extends Node {
-  Identifier? id;
+  late Identifier id;
   ExtendsDeclaration? extendsDeclaration;
   List<ScriptNameFlagDeclaration> flags = [];
 
   @override
-  NodeType? type = NodeType.scriptNameKw;
+  NodeType type = NodeType.scriptNameKw;
 
   bool get isConditional {
     final flag = flags
@@ -160,9 +160,9 @@ class ScriptNameStatement extends Node {
 
 class ScriptNameFlagDeclaration extends Node {
   @override
-  NodeType? type = NodeType.flagKw;
+  NodeType type = NodeType.flagKw;
 
-  ScriptNameFlag? flag;
+  late ScriptNameFlag flag;
 
   ScriptNameFlagDeclaration({
     required int start,
@@ -171,10 +171,10 @@ class ScriptNameFlagDeclaration extends Node {
 }
 
 class ExtendsDeclaration extends Node {
-  Identifier? extended;
+  late Identifier extended;
 
   @override
-  NodeType? type = NodeType.extendsKw;
+  NodeType type = NodeType.extendsKw;
 
   ExtendsDeclaration({
     required int start,
@@ -184,9 +184,9 @@ class ExtendsDeclaration extends Node {
 
 class ExpressionStatement extends Node {
   @override
-  NodeType? type = NodeType.expressionStatement;
+  NodeType type = NodeType.expressionStatement;
 
-  Node? expression;
+  late Node expression;
 
   ExpressionStatement({
     required int start,
@@ -196,11 +196,11 @@ class ExpressionStatement extends Node {
 
 class IfStatement extends Node {
   @override
-  NodeType? type = NodeType.ifKw;
-  NodeType? endType = NodeType.endIfKw;
+  NodeType type = NodeType.ifKw;
+  NodeType endType = NodeType.endIfKw;
 
-  Node? test;
-  Node? consequent;
+  late Node test;
+  late Node consequent;
   Node? alternate;
 
   IfStatement({
@@ -211,11 +211,11 @@ class IfStatement extends Node {
 
 class FunctionStatement extends Node {
   @override
-  NodeType? type = NodeType.functionKw;
-  NodeType? endType = NodeType.endFunctionKw;
+  NodeType type = NodeType.functionKw;
+  NodeType endType = NodeType.endFunctionKw;
 
-  Identifier? id;
-  List<Node> body = [];
+  late Identifier id;
+  BlockStatement? body;
   List<Node> params = [];
   List<FunctionFlagDeclaration> flags = [];
 
@@ -237,9 +237,9 @@ class FunctionStatement extends Node {
 
 class FunctionFlagDeclaration extends Node {
   @override
-  NodeType? type = NodeType.flagKw;
+  NodeType type = NodeType.flagKw;
 
-  FunctionFlag? flag;
+  late FunctionFlag flag;
 
   FunctionFlagDeclaration({
     required int start,
@@ -264,7 +264,7 @@ class FunctionFlagDeclaration extends Node {
 
 class BlockStatement extends Node {
   @override
-  NodeType? type = NodeType.block;
+  NodeType type = NodeType.block;
 
   List<Node> body = [];
 
@@ -276,10 +276,11 @@ class BlockStatement extends Node {
 
 class AssignExpression extends Node {
   @override
-  NodeType? type = NodeType.assign;
+  NodeType type = NodeType.assign;
 
-  Node? left;
-  Node? right;
+  late Node left;
+  late Node right;
+  late String operator;
 
   AssignExpression({
     required int start,
@@ -289,7 +290,7 @@ class AssignExpression extends Node {
 
 class Literal extends Node {
   @override
-  NodeType? type = NodeType.literal;
+  NodeType type = NodeType.literal;
 
   dynamic value;
   String raw = '';
@@ -302,7 +303,7 @@ class Literal extends Node {
 
 class Identifier extends Node {
   @override
-  NodeType? type = NodeType.id;
+  NodeType type = NodeType.id;
 
   String name = '';
 
@@ -312,12 +313,15 @@ class Identifier extends Node {
   }) : super(start: start, end: end);
 }
 
-class LogicalExpression extends Node {
-  Node? left;
-  Node? right;
-  String operator = '';
+class BinaryExpression extends Node {
+  @override
+  NodeType type = NodeType.binary;
 
-  LogicalExpression({
+  late Node left;
+  late String operator;
+  late Node right;
+
+  BinaryExpression({
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
@@ -325,11 +329,11 @@ class LogicalExpression extends Node {
 
 class NewExpression extends Node {
   @override
-  NodeType? type = NodeType.newKw;
+  NodeType type = NodeType.newKw;
 
-  Node? callee;
-
-  Node? argument;
+  late Node callee;
+  late Node argument;
+  late Identifier meta;
 
   NewExpression({
     required int start,
@@ -339,11 +343,10 @@ class NewExpression extends Node {
 
 class MemberExpression extends Node {
   @override
-  NodeType? type = NodeType.member;
+  NodeType type = NodeType.member;
 
-  Node? property;
-  Node? object;
-
+  late Node property;
+  late Node object;
   bool computed = false;
 
   MemberExpression({
@@ -354,9 +357,9 @@ class MemberExpression extends Node {
 
 class VariableDeclaration extends Node {
   @override
-  NodeType? type = NodeType.variableDeclaration;
+  NodeType type = NodeType.variableDeclaration;
 
-  Variable? variable;
+  late Variable variable;
 
   VariableDeclaration({
     required int start,
@@ -366,12 +369,13 @@ class VariableDeclaration extends Node {
 
 class Variable extends Node {
   @override
-  NodeType? type = NodeType.variable;
+  NodeType type = NodeType.variable;
 
   String kind = '';
 
-  Identifier? id;
+  late Identifier id;
   Node? init;
+  bool isArray = false;
 
   Variable({
     required int start,
@@ -381,10 +385,9 @@ class Variable extends Node {
 
 class CallExpression extends Node {
   @override
-  NodeType? type = NodeType.callExpression;
+  NodeType type = NodeType.callExpression;
 
-  Node? callee;
-
+  late Node callee;
   List<Node> arguments = [];
 
   CallExpression({
@@ -395,11 +398,11 @@ class CallExpression extends Node {
 
 class PropertyDeclaration extends Node {
   @override
-  NodeType? type = NodeType.propertyKw;
+  NodeType type = NodeType.propertyKw;
 
-  Identifier? id;
+  late Identifier id;
+  late String kind;
   Node? init;
-  String? kind;
   List<PropertyFlagDeclaration> flags = [];
 
   PropertyDeclaration({
@@ -444,9 +447,9 @@ class PropertyFullDeclaration extends PropertyDeclaration {
 
 class PropertyFlagDeclaration extends Node {
   @override
-  NodeType? type = NodeType.flagKw;
+  NodeType type = NodeType.flagKw;
 
-  PropertyFlag? flag;
+  late PropertyFlag flag;
 
   PropertyFlagDeclaration({
     required int start,
@@ -477,7 +480,7 @@ class ReturnStatement extends Node {
   Node? argument;
 
   @override
-  NodeType? type = NodeType.returnKw;
+  NodeType type = NodeType.returnKw;
 
   ReturnStatement({
     required int start,
@@ -487,10 +490,10 @@ class ReturnStatement extends Node {
 
 class CastExpression extends Node {
   @override
-  NodeType? type = NodeType.castExpression;
+  NodeType type = NodeType.castExpression;
 
-  Node? id;
-  Node? kind;
+  late Node id;
+  late Node kind;
 
   CastExpression({
     required int start,
@@ -500,12 +503,10 @@ class CastExpression extends Node {
 
 class UnaryExpression extends Node {
   @override
-  NodeType? type = NodeType.unary;
+  NodeType type = NodeType.unary;
 
   String operator = '';
-
-  Node? argument;
-
+  late Node argument;
   bool isPrefix = false;
 
   UnaryExpression({
@@ -516,11 +517,11 @@ class UnaryExpression extends Node {
 
 class WhileStatement extends Node {
   @override
-  NodeType? type = NodeType.whileKw;
-  NodeType? endType = NodeType.endWhileKw;
+  NodeType type = NodeType.whileKw;
+  NodeType endType = NodeType.endWhileKw;
 
-  Node? test;
-  Node? consequent;
+  late Node test;
+  late Node consequent;
 
   WhileStatement({
     required int start,
@@ -530,18 +531,16 @@ class WhileStatement extends Node {
 
 class StateStatement extends Node {
   @override
-  NodeType? type = NodeType.stateKw;
-  NodeType? endType = NodeType.endStateKw;
-  Identifier? id;
+  NodeType type = NodeType.stateKw;
+  NodeType endType = NodeType.endStateKw;
+  late Identifier id;
   StateFlag? flag;
-  BlockStatement? body;
+  late BlockStatement body;
 
   bool get isAuto => flag == StateFlag.auto;
 
   bool get isValid {
     final body = this.body;
-    if (body == null) return true;
-
     final elements = body.body;
 
     if (elements.isEmpty) return true;
@@ -563,10 +562,10 @@ class StateStatement extends Node {
 
 class EventStatement extends Node {
   @override
-  NodeType? type = NodeType.eventKw;
-  NodeType? endType = NodeType.endEventKw;
+  NodeType type = NodeType.eventKw;
+  NodeType endType = NodeType.endEventKw;
 
-  Identifier? id;
+  late Identifier id;
   BlockStatement? body;
   List<Node> params = [];
   List<EventFlagDeclaration> flags = [];
@@ -587,7 +586,7 @@ class EventStatement extends Node {
 
 class EventFlagDeclaration extends Node {
   @override
-  NodeType? type = NodeType.flagKw;
+  NodeType type = NodeType.flagKw;
 
   EventFlag? flag;
 
@@ -612,9 +611,9 @@ class EventFlagDeclaration extends Node {
 
 class ImportStatement extends Node {
   @override
-  NodeType? type = NodeType.importKw;
+  NodeType type = NodeType.importKw;
 
-  Identifier? id;
+  late Identifier id;
 
   ImportStatement({
     required int start,

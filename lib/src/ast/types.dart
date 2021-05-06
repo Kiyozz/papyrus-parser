@@ -7,6 +7,8 @@ enum EventFlag { native }
 
 enum StateFlag { auto }
 
+enum Side { left, right }
+
 enum NodeType {
   eof,
   name,
@@ -121,6 +123,8 @@ extension NodeTypePrefix on NodeType {
   bool get isPrefix {
     switch (this) {
       case NodeType.plusMinus:
+        return true;
+      case NodeType.prefix:
         return true;
       default:
         return false;

@@ -18,7 +18,7 @@ void main() {
         final extendsDeclaration =
             scriptName.extendsDeclaration as ExtendsDeclaration;
         expect(
-          extendsDeclaration.extended?.name,
+          extendsDeclaration.extended.name,
           equals('Form'),
         );
       },
@@ -85,11 +85,10 @@ void main() {
         final program = tree.parse();
         expect(program.body, hasLength(1));
         final functionBody = program.body.first as FunctionStatement;
-        expect(functionBody.id?.name, equals('toto'));
-        expect(functionBody.body, hasLength(1));
+        expect(functionBody.id.name, equals('toto'));
+        expect(functionBody.body, isNotNull);
         expect(functionBody.type, equals(NodeType.functionKw));
-        final block = functionBody.body[0] as BlockStatement;
-        expect(block.type, equals(NodeType.block));
+        expect(functionBody.body?.type, equals(NodeType.block));
       },
     );
 
@@ -104,33 +103,54 @@ void main() {
         final program = tree.parse();
         expect(program.body, hasLength(1));
         final body = program.body.first as FunctionStatement;
-        expect(body.id?.name, equals('toto'));
-        expect(body.body, hasLength(1));
+        expect(body.id.name, equals('toto'));
+        expect(body.body, isNotNull);
         expect(body.type, equals(NodeType.functionKw));
         expect(body.params, hasLength(1));
         final param = body.params.first as VariableDeclaration;
-        final variable = param.variable as Variable;
+        final variable = param.variable;
         expect(variable.kind, 'String');
         expect(variable.init, isNull);
-        expect(variable.id?.name, 'n');
+        expect(variable.id.name, 'n');
       },
     );
 
     test(
-      'should have a name, and one argument with an init declaration',
+      'should have a Array VariableDeclaration',
       () {
         final tree = Tree(
-          content: 'Function toto(String n = "")\nEndFunction',
+          content: 'Function toto(String[] n)\nEndFunction',
+          options: TreeOptions(throwWhenMissingScriptname: false),
+        );
+
+        final functionBody = tree.parse().body.first as FunctionStatement;
+        expect(functionBody.id.name, equals('toto'));
+        expect(functionBody.body, isNotNull);
+        expect(functionBody.type, equals(NodeType.functionKw));
+        expect(functionBody.params, hasLength(1));
+        final param = functionBody.params.first as VariableDeclaration;
+        final variable = param.variable;
+        expect(variable.kind, 'String[]');
+        expect(variable.init, isNull);
+        expect(variable.id.name, 'n');
+      },
+    );
+
+    test(
+      'should have a name, two arguments, one with an init declaration',
+      () {
+        final tree = Tree(
+          content: 'Function toto(String v, String n = "")\nEndFunction',
           options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
         final body = program.body.first as FunctionStatement;
-        final param = body.params.first as VariableDeclaration;
-        final variable = param.variable as Variable;
+        final param = body.params[1] as VariableDeclaration;
+        final variable = param.variable;
         expect(variable.kind, equals('String'));
-        expect(variable.id?.name, equals('n'));
+        expect(variable.id.name, equals('n'));
         final init = variable.init as Literal;
         expect(init.value, equals(''));
       },
@@ -161,7 +181,6 @@ void main() {
 
         final program = tree.parse();
         final function = program.body.first as FunctionStatement;
-        expect(function.body, isEmpty);
         expect(function.flags, hasLength(2));
         final flags = function.flags;
         final globalFlag = flags.first;
@@ -182,7 +201,6 @@ void main() {
 
         final program = tree.parse();
         final function = program.body.first as FunctionStatement;
-        expect(function.body, hasLength(1));
         expect(function.flags, hasLength(1));
         final flags = function.flags;
         final globalFlag = flags.first;
@@ -215,18 +233,41 @@ void main() {
           options: TreeOptions(throwWhenMissingScriptname: false),
         );
 
-        final functionStatement = tree.parse().body.first as FunctionStatement;
+        final statement = tree.parse().body.first as FunctionStatement;
         final variableDeclaration =
-            functionStatement.params.first as VariableDeclaration;
-        final variable = variableDeclaration.variable as Variable;
+            statement.params.first as VariableDeclaration;
+        final variable = variableDeclaration.variable;
         expect(variable.init, TypeMatcher<Literal>());
+      },
+    );
+
+    test(
+      'should have an MemberExpression',
+      () {
+        final tree = Tree(
+          content: 'Function test()\n'
+              '  Debug.Trace("[")\n'
+              'EndFunction',
+          options: TreeOptions(throwWhenMissingScriptname: false),
+        );
+
+        final statement = tree.parse().body.first as FunctionStatement;
+        final expression = statement.body?.body.first as ExpressionStatement;
+        final call = expression.expression as CallExpression;
+        final member = call.callee as MemberExpression;
+        final object = member.object as Identifier;
+        final property = member.property as Identifier;
+
+        expect(object.name, equals('Debug'));
+        expect(property.name, equals('Trace'));
+        expect(call.arguments, isNotEmpty);
       },
     );
   });
 
   group('VariableDeclaration', () {
     test(
-      'should not have an init declaration',
+      'should not have an init declaration, kind "String"',
       () {
         final tree = Tree(
           content: 'String val',
@@ -236,11 +277,28 @@ void main() {
         final program = tree.parse();
         expect(program.body, hasLength(1));
         final variableDeclaration = program.body.first as VariableDeclaration;
-        final variable = variableDeclaration.variable as Variable;
+        final variable = variableDeclaration.variable;
         expect(variable.init, isNull);
         expect(variable.kind, equals('String'));
-        final name = variable.id as Identifier;
-        expect(name.name, equals('val'));
+        expect(variable.id.name, equals('val'));
+      },
+    );
+
+    test(
+      'should not have an init declaration, kind "String[]", isArray',
+      () {
+        final tree = Tree(
+          content: 'String[] val',
+          options: TreeOptions(throwWhenMissingScriptname: false),
+        );
+
+        final program = tree.parse();
+        final variableDeclaration = program.body.first as VariableDeclaration;
+        final variable = variableDeclaration.variable;
+        expect(variable.init, isNull);
+        expect(variable.kind, equals('String[]'));
+        expect(variable.isArray, isTrue);
+        expect(variable.id.name, equals('val'));
       },
     );
 
@@ -255,17 +313,16 @@ void main() {
         final program = tree.parse();
         expect(program.body, hasLength(1));
         final variableDeclaration = program.body.first as VariableDeclaration;
-        final variable = variableDeclaration.variable as Variable;
+        final variable = variableDeclaration.variable;
         final init = variable.init as Literal;
         expect(init.value, '');
         expect(variable.kind, equals('String'));
-        final name = variable.id as Identifier;
-        expect(name.name, equals('val'));
+        expect(variable.id.name, equals('val'));
       },
     );
 
     test(
-      'should have an init LogicalExpression declaration',
+      'should have an init BinaryExpression declaration',
       () {
         final tree = Tree(
           content: 'Bool val = ShouldStay() == false',
@@ -275,14 +332,13 @@ void main() {
         final program = tree.parse();
         expect(program.body, hasLength(1));
         final variableDeclaration = program.body.first as VariableDeclaration;
-        final variable = variableDeclaration.variable as Variable;
-        final init = variable.init as LogicalExpression;
+        final variable = variableDeclaration.variable;
+        final init = variable.init as BinaryExpression;
         expect(init.left, TypeMatcher<CallExpression>());
         expect(init.operator, '==');
         expect(init.right, TypeMatcher<Literal>());
         expect(variable.kind, equals('Bool'));
-        final name = variable.id as Identifier;
-        expect(name.name, equals('val'));
+        expect(variable.id.name, equals('val'));
       },
     );
 
@@ -296,7 +352,7 @@ void main() {
 
         final program = tree.parse();
         final variableDeclaration = program.body.first as VariableDeclaration;
-        final variable = variableDeclaration.variable as Variable;
+        final variable = variableDeclaration.variable;
         final cast = variable.init as CastExpression;
         final call = cast.id as CallExpression;
         final callee = call.callee as Identifier;
@@ -316,7 +372,7 @@ void main() {
 
         final variableDeclaration =
             tree.parse().body.first as VariableDeclaration;
-        final variable = variableDeclaration.variable as Variable;
+        final variable = variableDeclaration.variable;
         expect(variable.init, TypeMatcher<MemberExpression>());
       },
     );
@@ -335,8 +391,7 @@ void main() {
         expect(program.body, hasLength(1));
         final property = program.body.first as PropertyDeclaration;
         expect(property.flags, hasLength(1));
-        final id = property.id as Identifier;
-        expect(id.name, equals('test'));
+        expect(property.id.name, equals('test'));
         expect(property.kind, 'Int');
         expect(property.init, isNull);
       },
@@ -355,8 +410,7 @@ void main() {
         final property = program.body.first as PropertyDeclaration;
         expect(property.flags, hasLength(1));
         expect(property.flags.first.flag, equals(PropertyFlag.autoReadonly));
-        final id = property.id as Identifier;
-        expect(id.name, equals('test'));
+        expect(property.id.name, equals('test'));
         expect(property.kind, 'Int');
         final init = property.init as Literal;
         expect(init.value, 1);
@@ -381,8 +435,7 @@ void main() {
         final property = program.body.first as PropertyFullDeclaration;
         expect(property.flags, hasLength(1));
         expect(property.flags.first.flag, equals(PropertyFlag.hidden));
-        final id = property.id as Identifier;
-        expect(id.name, equals('test'));
+        expect(property.id.name, equals('test'));
         expect(property.kind, 'Int');
         final init = property.init as Literal;
         expect(init.value, 1);
@@ -482,10 +535,8 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final functionStatements =
-            (program.body.first as FunctionStatement).body;
-        expect(functionStatements, hasLength(1));
-        final block = functionStatements.first as BlockStatement;
+        final block =
+            (program.body.first as FunctionStatement).body as BlockStatement;
         expect(block.body, hasLength(1));
         final returnStatement = block.body.first as ReturnStatement;
         final argument = returnStatement.argument as Literal;
@@ -505,10 +556,8 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final functionStatements =
-            (program.body.first as FunctionStatement).body;
-        expect(functionStatements, hasLength(1));
-        final block = functionStatements.first as BlockStatement;
+        final block =
+            (program.body.first as FunctionStatement).body as BlockStatement;
         expect(block.body, hasLength(1));
         final returnStatement = block.body.first as ReturnStatement;
         expect(returnStatement.argument, isNull);
@@ -527,10 +576,8 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final functionStatements =
-            (program.body.first as FunctionStatement).body;
-        expect(functionStatements, hasLength(1));
-        final block = functionStatements.first as BlockStatement;
+        final block =
+            (program.body.first as FunctionStatement).body as BlockStatement;
         expect(block.body, hasLength(1));
         final returnStatement = block.body.first as ReturnStatement;
         final argument = returnStatement.argument as CallExpression;
@@ -540,7 +587,7 @@ void main() {
     );
 
     test(
-      'argument should be a LogicalExpression with two CallExpression',
+      'argument should be a BinaryExpression with two CallExpression',
       () {
         final tree = Tree(
           content: 'Function test()\n'
@@ -551,13 +598,11 @@ void main() {
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
-        final functionStatements =
-            (program.body.first as FunctionStatement).body;
-        expect(functionStatements, hasLength(1));
-        final block = functionStatements.first as BlockStatement;
+        final block =
+            (program.body.first as FunctionStatement).body as BlockStatement;
         expect(block.body, hasLength(1));
         final returnStatement = block.body.first as ReturnStatement;
-        final argument = returnStatement.argument as LogicalExpression;
+        final argument = returnStatement.argument as BinaryExpression;
         final left = argument.left as CallExpression;
         final right = argument.right as CallExpression;
         final lCallee = left.callee as Identifier;
@@ -578,6 +623,35 @@ void main() {
         throwsA(TypeMatcher<UnexpectedTokenException>()),
       );
     });
+
+    test(
+      'argument should have two BinaryExpression, "*", ">=", and MemberExpression',
+      () {
+        final tree = Tree(
+          content: 'Return (currentTime - lastTime) * 24 >= dt.  test',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+            throwWhenReturnOutsideOfFunctionOrEvent: false,
+          ),
+        );
+
+        final program = tree.parse();
+        final returnStatement = program.body.first as ReturnStatement;
+        final argument = returnStatement.argument as BinaryExpression;
+        expect(argument.operator, equals('*'));
+        expect(argument.type, equals(NodeType.binary));
+        final left = argument.left as BinaryExpression;
+        expect(left.operator, equals('-'));
+        expect((left.left as Identifier).name, equals('currentTime'));
+        expect((left.right as Identifier).name, equals('lastTime'));
+        final right = argument.right as BinaryExpression;
+        expect(right.operator, equals('>='));
+        expect((right.left as Literal).value, 24);
+        final member = right.right as MemberExpression;
+        expect((member.object as Identifier).name, equals('dt'));
+        expect((member.property as Identifier).name, equals('test'));
+      },
+    );
   });
 
   group('IfStatement', () {
@@ -624,7 +698,26 @@ void main() {
     );
 
     test(
-      'should have a LogicalExpression with a CallExpression and a Literal, and parenthesis',
+      'should have a UnaryExpression Literal and parenthesis',
+      () {
+        final tree = Tree(
+          content: 'If (!((((((true)))))))\n'
+              'EndIf',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+            throwWhenIfOutsideOfFunctionOrEvent: false,
+          ),
+        );
+
+        final ifStatement = tree.parse().body.first as IfStatement;
+        final test = ifStatement.test as UnaryExpression;
+        expect(test.argument, TypeMatcher<Literal>());
+        expect(test.operator, equals('!'));
+      },
+    );
+
+    test(
+      'should have a BinaryExpression with a CallExpression and a Literal, and parenthesis',
       () {
         final tree = Tree(
           content: 'If (shouldStay() == true)\n'
@@ -638,7 +731,7 @@ void main() {
         final program = tree.parse();
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
-        final ifTest = ifStatement.test as LogicalExpression;
+        final ifTest = ifStatement.test as BinaryExpression;
         expect(ifTest.type, equals(NodeType.binary));
         expect(ifTest.left, TypeMatcher<CallExpression>());
         expect(ifTest.right, TypeMatcher<Literal>());
@@ -648,7 +741,7 @@ void main() {
     );
 
     test(
-      'should have a LogicalExpression with two CallExpression, and parenthesis',
+      'should have a BinaryExpression with two CallExpression, and parenthesis',
       () {
         final tree = Tree(
           content: 'If (shouldStay() == shouldStay())\n'
@@ -662,7 +755,7 @@ void main() {
         final program = tree.parse();
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
-        final ifTest = ifStatement.test as LogicalExpression;
+        final ifTest = ifStatement.test as BinaryExpression;
         expect(ifTest.type, equals(NodeType.binary));
         expect(ifTest.left, TypeMatcher<CallExpression>());
         expect(ifTest.right, TypeMatcher<CallExpression>());
@@ -672,7 +765,7 @@ void main() {
     );
 
     test(
-      'should have a LogicalExpression with two CallExpression, one with one parameter, and parenthesis',
+      'should have a BinaryExpression with two CallExpression, one with one parameter, and parenthesis',
       () {
         final tree = Tree(
           content: 'If (shouldStay(true) == shouldStay())\n'
@@ -686,7 +779,7 @@ void main() {
         final program = tree.parse();
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
-        final ifTest = ifStatement.test as LogicalExpression;
+        final ifTest = ifStatement.test as BinaryExpression;
         expect(ifTest.type, equals(NodeType.binary));
         final left = ifTest.left as CallExpression;
         expect(left.arguments, hasLength(1));
@@ -697,7 +790,7 @@ void main() {
     );
 
     test(
-      'should have a LogicalExpression with two CallExpression, one with one param that is a CallExpression, and parenthesis',
+      'should have a BinaryExpression with two CallExpression, one with one param that is a CallExpression, and parenthesis',
       () {
         final tree = Tree(
           content: 'If (shouldStay(shouldStay()) == shouldStay())\n'
@@ -711,7 +804,7 @@ void main() {
         final program = tree.parse();
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
-        final ifTest = ifStatement.test as LogicalExpression;
+        final ifTest = ifStatement.test as BinaryExpression;
         expect(ifTest.type, equals(NodeType.binary));
         final left = ifTest.left as CallExpression;
         expect(left.arguments, hasLength(1));
@@ -719,6 +812,36 @@ void main() {
         expect(ifTest.right, TypeMatcher<CallExpression>());
         final consequent = ifStatement.consequent as BlockStatement;
         expect(consequent.type, equals(NodeType.block));
+      },
+    );
+
+    test(
+      'should have two BinaryExpression, one ">=" and one "*" and parenthesis',
+      () {
+        final tree = Tree(
+          content: 'If (currentTime - lastTime) * 24 >= dt.test\n'
+              'EndIf',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+            throwWhenIfOutsideOfFunctionOrEvent: false,
+          ),
+        );
+
+        final program = tree.parse();
+        final ifStatement = program.body.first as IfStatement;
+        final ifTest = ifStatement.test as BinaryExpression;
+        expect(ifTest.operator, equals('*'));
+        expect(ifTest.type, equals(NodeType.binary));
+        final left = ifTest.left as BinaryExpression;
+        expect(left.operator, equals('-'));
+        expect((left.left as Identifier).name, equals('currentTime'));
+        expect((left.right as Identifier).name, equals('lastTime'));
+        final right = ifTest.right as BinaryExpression;
+        expect(right.operator, equals('>='));
+        expect((right.left as Literal).value, 24);
+        final member = right.right as MemberExpression;
+        expect((member.object as Identifier).name, equals('dt'));
+        expect((member.property as Identifier).name, equals('test'));
       },
     );
 
@@ -782,7 +905,7 @@ void main() {
 
         final program = tree.parse();
         final ifStatement = program.body.first as IfStatement;
-        final test = ifStatement.test as LogicalExpression;
+        final test = ifStatement.test as BinaryExpression;
         expect(test.operator, equals('&&'));
 
         final leftTest = test.left as CastExpression;
@@ -815,7 +938,7 @@ void main() {
 
         final program = tree.parse();
         final ifStatement = program.body.first as IfStatement;
-        final test = ifStatement.test as LogicalExpression;
+        final test = ifStatement.test as BinaryExpression;
         expect(test.operator, equals('=='));
         final call = test.left as CallExpression;
         final callee = call.callee as Identifier;
@@ -848,7 +971,7 @@ void main() {
         final consequent = ifStatement.consequent as BlockStatement;
         final alternate = ifStatement.alternate as BlockStatement;
 
-        expect(test.value, equals(true));
+        expect(test.value, isTrue);
         expect(consequent.body, isEmpty);
         expect(alternate.body, isEmpty);
       },
@@ -873,7 +996,7 @@ void main() {
         final consequent = ifStatement.consequent as BlockStatement;
         final alternate = ifStatement.alternate as BlockStatement;
 
-        expect(test.value, equals(true));
+        expect(test.value, isTrue);
         expect(consequent.body, isEmpty);
         expect(alternate.body.first, TypeMatcher<VariableDeclaration>());
       },
@@ -901,8 +1024,8 @@ void main() {
         final elseIfConsequent = elseIfStatement.consequent as BlockStatement;
         final elseIfAlternate = elseIfStatement.alternate as BlockStatement;
 
-        expect(test.value, equals(true));
-        expect(elseIfTest.value, equals(false));
+        expect(test.value, isTrue);
+        expect(elseIfTest.value, isFalse);
         expect(elseIfConsequent.body.first, TypeMatcher<VariableDeclaration>());
         expect(elseIfAlternate.body, isEmpty);
       },
@@ -932,7 +1055,7 @@ void main() {
         final ifStatement = tree.parse().body.first as IfStatement;
         final test = ifStatement.test as Literal;
 
-        expect(test.value, equals(true));
+        expect(test.value, isTrue);
 
         var currentIfStatement = ifStatement.alternate;
         var numberOfIfStatement = 0;
@@ -997,6 +1120,34 @@ void main() {
     );
 
     test(
+      'should have multiple BinaryExpression',
+      () {
+        final tree = Tree(
+          content: 'Float t = (chance * (1 - health / 100)) as Float',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+            throwWhenCastExpressionOutsideOfFunctionOrEvent: false,
+          ),
+        );
+
+        final program = tree.parse();
+        final variable = (program.body.first as VariableDeclaration).variable;
+        final cast = variable.init as CastExpression;
+        final firstBinary = cast.id as BinaryExpression;
+        expect(firstBinary.operator, equals('*'));
+        expect((firstBinary.left as Identifier).name, equals('chance'));
+        final rightFirstBinary = firstBinary.right as BinaryExpression;
+        final literalOne = rightFirstBinary.left as Literal;
+        expect(literalOne.value, equals(1));
+        expect(rightFirstBinary.operator, equals('-'));
+        final binary = rightFirstBinary.right as BinaryExpression;
+        expect((binary.left as Identifier).name, equals('health'));
+        expect((binary.right as Literal).value, equals(100));
+        expect((cast.kind as Identifier).name, equals('Float'));
+      },
+    );
+
+    test(
       'should have one CallExpression and one Identifier',
       () {
         final tree = Tree(
@@ -1030,7 +1181,7 @@ void main() {
         final program = tree.parse();
 
         final variableDeclaration = program.body.first as VariableDeclaration;
-        final variable = variableDeclaration.variable as Variable;
+        final variable = variableDeclaration.variable;
         final literal = variable.init as Literal;
         expect(literal.value, equals(0x0033FF));
         expect(literal.value, equals(13311));
@@ -1049,7 +1200,7 @@ void main() {
         final program = tree.parse();
 
         final variableDeclaration = program.body.first as VariableDeclaration;
-        final variable = variableDeclaration.variable as Variable;
+        final variable = variableDeclaration.variable;
         final expression = variable.init as UnaryExpression;
         expect(expression.operator, equals('-'));
         final literal = expression.argument as Literal;
@@ -1069,7 +1220,7 @@ void main() {
         final program = tree.parse();
 
         final variableDeclaration = program.body.first as VariableDeclaration;
-        final variable = variableDeclaration.variable as Variable;
+        final variable = variableDeclaration.variable;
         final expression = variable.init as UnaryExpression;
         expect(expression.operator, equals('-'));
         final literal = expression.argument as Literal;
@@ -1089,9 +1240,9 @@ void main() {
         final program = tree.parse();
 
         final variableDeclaration = program.body.first as VariableDeclaration;
-        final variable = variableDeclaration.variable as Variable;
+        final variable = variableDeclaration.variable;
         final literal = variable.init as Literal;
-        expect(literal.value, equals(null));
+        expect(literal.value, isNull);
         expect(literal.raw, equals('None'));
       },
     );
@@ -1120,7 +1271,7 @@ void main() {
     );
 
     test(
-      'should have one LogicalExpression with one CallExpression and UnaryExpression',
+      'should have one BinaryExpression with one CallExpression and UnaryExpression',
       () {
         final tree = Tree(
           content: 'While call() == -1\n'
@@ -1133,7 +1284,7 @@ void main() {
 
         final program = tree.parse();
         final whileStatement = program.body.first as WhileStatement;
-        final test = whileStatement.test as LogicalExpression;
+        final test = whileStatement.test as BinaryExpression;
         final call = test.left as CallExpression;
         final unary = test.right as UnaryExpression;
         final callee = call.callee as Identifier;
@@ -1157,9 +1308,8 @@ void main() {
 
         final state = tree.parse().body.first as StateStatement;
         expect(state.flag, equals(StateFlag.auto));
-        final id = state.id as Identifier;
-        expect(id.name, equals('Test'));
-        expect(state.body?.body, isEmpty);
+        expect(state.id.name, equals('Test'));
+        expect(state.body.body, isEmpty);
       },
     );
 
@@ -1175,11 +1325,10 @@ void main() {
         );
 
         final state = tree.parse().body.first as StateStatement;
-        final id = state.id as Identifier;
-        expect(id.name, equals('Test'));
-        expect(state.body?.body, hasLength(1));
-        final functionStatement = state.body?.body.first as FunctionStatement;
-        expect(functionStatement.id?.name, equals('test'));
+        expect(state.id.name, equals('Test'));
+        expect(state.body.body, hasLength(1));
+        final functionStatement = state.body.body.first as FunctionStatement;
+        expect(functionStatement.id.name, equals('test'));
         expect(functionStatement.kind, equals('Int'));
       },
     );
@@ -1217,8 +1366,7 @@ void main() {
         expect(event.flags, hasLength(1));
         final flag = event.flags.first;
         expect(flag.flag, equals(EventFlag.native));
-        final id = event.id as Identifier;
-        expect(id.name, equals('OnTest'));
+        expect(event.id.name, equals('OnTest'));
       },
     );
 
@@ -1233,15 +1381,14 @@ void main() {
 
         final event = tree.parse().body.first as EventStatement;
         expect(event.flags, isEmpty);
-        final id = event.id as Identifier;
-        expect(id.name, equals('OnTest'));
+        expect(event.id.name, equals('OnTest'));
         final params = event.params;
         expect(params, hasLength(1));
         final param = event.params.first as VariableDeclaration;
-        final variable = param.variable as Variable;
+        final variable = param.variable;
         expect(variable.init, isNull);
         expect(variable.kind, equals('String'));
-        expect(variable.id?.name, equals('n'));
+        expect(variable.id.name, equals('n'));
       },
     );
   });
@@ -1382,6 +1529,204 @@ void main() {
           () => tree.parse(),
           throwsA(TypeMatcher<UnexpectedTokenException>()),
         );
+      },
+    );
+  });
+
+  group('BinaryExpression', () {
+    test(
+      'should have plus operator, one Literal and Identifier',
+      () {
+        final tree = Tree(
+          content: '1 + serviceName',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+            throwWhenBinaryExpressionOutsideOfFunctionOrEvent: false,
+          ),
+        );
+
+        final expression = tree.parse().body.first as ExpressionStatement;
+        final binary = expression.expression as BinaryExpression;
+        final left = binary.left as Literal;
+        final right = binary.right as Identifier;
+        expect(binary.operator, equals('+'));
+        expect(left.value, equals(1));
+        expect(right.name, equals('serviceName'));
+      },
+    );
+
+    test(
+      'should have greater than or equals, one Literal and Identifier',
+      () {
+        final tree = Tree(
+          content: '1 >= serviceName',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+            throwWhenBinaryExpressionOutsideOfFunctionOrEvent: false,
+          ),
+        );
+
+        final expression = tree.parse().body.first as ExpressionStatement;
+        final binary = expression.expression as BinaryExpression;
+        final left = binary.left as Literal;
+        final right = binary.right as Identifier;
+        expect(binary.operator, '>=');
+        expect(left.value, equals(1));
+        expect(right.name, equals('serviceName'));
+      },
+    );
+  });
+
+  group('AssignExpression', () {
+    test(
+      'with Literal "="',
+      () {
+        final tree = Tree(
+          content: 'a = 1',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+          ),
+        );
+
+        final assign = tree.parse().body.first as AssignExpression;
+        final left = assign.left as Identifier;
+        final right = assign.right as Literal;
+        expect(assign.operator, equals('='));
+        expect(left.name, equals('a'));
+        expect(right.value, equals(1));
+      },
+    );
+
+    test(
+      'with Literal "+="',
+      () {
+        final tree = Tree(
+          content: 'a += 1',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+          ),
+        );
+
+        final assign = tree.parse().body.first as AssignExpression;
+        final left = assign.left as Identifier;
+        final right = assign.right as Literal;
+        expect(assign.operator, equals('+='));
+        expect(left.name, equals('a'));
+        expect(right.value, equals(1));
+      },
+    );
+
+    test(
+      'with CallExpression with MemberExpression',
+      () {
+        final tree = Tree(
+          content: 'a = Uti.Get()',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+          ),
+        );
+
+        final assign = tree.parse().body.first as AssignExpression;
+        final left = assign.left as Identifier;
+        final right = assign.right as CallExpression;
+        final member = right.callee as MemberExpression;
+        final memberObject = member.object as Identifier;
+        final memberProperty = member.property as Identifier;
+        expect(left.name, equals('a'));
+        expect(memberObject.name, equals('Uti'));
+        expect(memberProperty.name, equals('Get'));
+      },
+    );
+  });
+
+  group('LineTerminator', () {
+    test(
+      'should ignore backslash to go to next token',
+      () {
+        final tree = Tree(
+          content: 'if true && \\ \n'
+              '  false\n'
+              'EndIf',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+            throwWhenIfOutsideOfFunctionOrEvent: false,
+          ),
+        );
+
+        final program = tree.parse();
+        final ifStatement = program.body.first as IfStatement;
+        final ifTest = ifStatement.test as BinaryExpression;
+        expect((ifTest.left as Literal).value, isTrue);
+        expect((ifTest.right as Literal).value, isFalse);
+        expect(ifTest.operator, equals('&&'));
+      },
+    );
+
+    test(
+      'more than one line terminator in the same line should throws an error',
+      () {
+        final tree = Tree(
+          content: 'if true && \\ \\ \n'
+              '  false\n'
+              'EndIf',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+            throwWhenIfOutsideOfFunctionOrEvent: false,
+          ),
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<UnexpectedTokenException>()),
+        );
+      },
+    );
+  });
+
+  group('NewExpression', () {
+    test('should create new array', () {
+      final tree = Tree(
+        content: 'String[] s = new String[4]',
+        options: TreeOptions(
+          throwWhenMissingScriptname: false,
+        ),
+      );
+
+      final program = tree.parse();
+      final variableDeclaration = program.body.first as VariableDeclaration;
+      final variable = variableDeclaration.variable;
+      expect(variable.kind, equals('String[]'));
+      expect(variable.isArray, isTrue);
+      final init = variable.init as NewExpression;
+      final member = init.argument as MemberExpression;
+      expect(member.computed, isTrue);
+      expect(member.property, TypeMatcher<Literal>());
+      final object = member.object as Identifier;
+      expect(object.name, equals('String'));
+    });
+  });
+
+  group('Array', () {
+    test(
+      'should assign to array index',
+      () {
+        final tree = Tree(
+          content: 'toto[4] = true',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+          ),
+        );
+
+        final program = tree.parse();
+        final expression = program.body.first as ExpressionStatement;
+        final assign = expression.expression as AssignExpression;
+        final member = assign.left as MemberExpression;
+        expect(member.property, TypeMatcher<Literal>());
+        expect(member.computed, isTrue);
+        final object = member.object as Identifier;
+        expect(object.name, equals('toto'));
+        final right = assign.right as Literal;
+        expect(right.value, isTrue);
       },
     );
   });
