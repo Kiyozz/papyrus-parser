@@ -1465,7 +1465,7 @@ class Tree {
 
             pos = newPos;
           } else {
-            final newPos = _skipLineComment(pos: pos, skip: 2);
+            final newPos = _skipLineComment(pos: pos, skip: 1);
 
             pos = newPos;
           }

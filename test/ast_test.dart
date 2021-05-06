@@ -1294,6 +1294,23 @@ void main() {
         expect(unary.operator, equals('-'));
       },
     );
+
+    test(
+      'should not report missing EndWhile'
+      ' when a LineComment is at the end of the line',
+      () {
+        final tree = Tree(
+          content: 'While (true);\n'
+              'EndWhile\n',
+          options: TreeOptions(
+            throwWhenMissingScriptname: false,
+            throwWhenWhileStatementOutsideOfFunctionOrEvent: false,
+          ),
+        );
+
+        expect(() => tree.parse(), isNot(throwsA(NodeException)));
+      },
+    );
   });
 
   group('StateStatement', () {
