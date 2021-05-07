@@ -1849,6 +1849,30 @@ void main() {
     );
   });
 
+  group(
+    'Token',
+    () {
+      test(
+        '"++" and "--" operators should throws an error',
+        () {
+          final tree = Tree(
+            content: 'int f = 0\n'
+                'f++',
+            options: TreeOptions(
+              throwBinaryOutside: false,
+              throwScriptnameMissing: false,
+            ),
+          );
+
+          expect(
+            () => tree.parse(),
+            throwsA(TypeMatcher<UnexpectedTokenException>()),
+          );
+        },
+      );
+    },
+  );
+
   // TODO: review start/end of nodes
   // TODO: process line/column
   // TODO: throw when while, call, cast, if is used outside of function

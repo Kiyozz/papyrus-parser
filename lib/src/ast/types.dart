@@ -212,8 +212,6 @@ extension NodeTypeString on NodeType {
         return 'If';
       case NodeType.importKw:
         return 'Import';
-      case NodeType.incrementDecrement:
-        return '--++';
       case NodeType.lineTerminator:
         return '\\';
       case NodeType.literal:

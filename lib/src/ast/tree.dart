@@ -4,7 +4,7 @@ import 'package:collection/collection.dart';
 import 'exception.dart';
 import 'types.dart';
 import 'node.dart';
-import 'tree/options.dart';
+import 'options.dart';
 import 'property.dart';
 
 class Context {
