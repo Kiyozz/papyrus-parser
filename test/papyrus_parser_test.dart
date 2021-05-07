@@ -172,6 +172,38 @@ void main() {
     );
 
     test(
+      'with parenthesis before the identifier should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Function (toto)(String n = "")\n'
+              'EndFunction',
+          options: TreeOptions(throwScriptnameMissing: false),
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<UnexpectedTokenException>()),
+        );
+      },
+    );
+
+    test(
+      'without parenthesis should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Function toto\n'
+              'EndFunction',
+          options: TreeOptions(throwScriptnameMissing: false),
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<UnexpectedTokenException>()),
+        );
+      },
+    );
+
+    test(
       'should have Global and Native flags',
       () {
         final tree = Tree(
@@ -261,6 +293,68 @@ void main() {
         expect(object.name, equals('Debug'));
         expect(property.name, equals('Trace'));
         expect(call.arguments, isNotEmpty);
+      },
+    );
+
+    test(
+      'with an Function statement should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Function test()\n'
+              '  Function toto()\n'
+              '  EndFunction'
+              'EndFunction',
+          options: TreeOptions(
+            throwScriptnameMissing: false,
+          ),
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<UnexpectedTokenException>()),
+        );
+      },
+    );
+
+    test(
+      'with an Event statement should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Function test()\n'
+              '  Event toto()\n'
+              '  EndEvent'
+              'EndFunction',
+          options: TreeOptions(
+            throwScriptnameMissing: false,
+          ),
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<UnexpectedTokenException>()),
+        );
+      },
+    );
+
+    test(
+      'with an State statement should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Function test()\n'
+              '  State A\n'
+              '    Event toto()\n'
+              '    EndEvent'
+              '  EndState'
+              'EndFunction',
+          options: TreeOptions(
+            throwScriptnameMissing: false,
+          ),
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<UnexpectedTokenException>()),
+        );
       },
     );
   });
@@ -688,6 +782,22 @@ void main() {
     test('used outside of FunctionStatement should throws an error', () {
       final tree = Tree(
         content: 'Return true',
+        options: TreeOptions(
+          throwScriptnameMissing: false,
+        ),
+      );
+
+      expect(
+        () => tree.parse(),
+        throwsA(TypeMatcher<UnexpectedTokenException>()),
+      );
+    });
+
+    test('used inside of EventStatement should throws an error', () {
+      final tree = Tree(
+        content: 'Event t()\n'
+            '  Return true\n'
+            'EndEvent',
         options: TreeOptions(
           throwScriptnameMissing: false,
         ),
@@ -1478,6 +1588,80 @@ void main() {
         expect(variable.id.name, equals('n'));
       },
     );
+
+    test(
+      'with an State statement should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Event toto()\n'
+              '  State A\n'
+              '  EndState\n'
+              'EndEvent',
+          options: TreeOptions(
+            throwScriptnameMissing: false,
+          ),
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<UnexpectedTokenException>()),
+        );
+      },
+    );
+
+    test(
+      'with parenthesis before the identifier should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Event (toto)(String n)\n'
+              'EndEvent',
+          options: TreeOptions(throwScriptnameMissing: false),
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<UnexpectedTokenException>()),
+        );
+      },
+    );
+
+    test(
+      'with an Function statement should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Event toto()\n'
+              '  Function A()\n'
+              '  EndFunction\n'
+              'EndEvent',
+          options: TreeOptions(
+            throwScriptnameMissing: false,
+          ),
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<UnexpectedTokenException>()),
+        );
+      },
+    );
+
+    test(
+      'without parenthesis should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Event toto\n'
+              'EndEvent',
+          options: TreeOptions(
+            throwScriptnameMissing: false,
+          ),
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<UnexpectedTokenException>()),
+        );
+      },
+    );
   });
 
   group('Parent MemberExpression', () {
@@ -1558,6 +1742,23 @@ void main() {
 
         final importStatement = tree.parse().body.first as ImportStatement;
         expect(importStatement.id.name, equals('Debug'));
+      },
+    );
+
+    test(
+      'with parenthesis should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Import (Debug)',
+          options: TreeOptions(
+            throwScriptnameMissing: false,
+          ),
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<UnexpectedTokenException>()),
+        );
       },
     );
 
@@ -1875,8 +2076,6 @@ void main() {
 
   // TODO: review start/end of nodes
   // TODO: process line/column
-  // TODO: throw when while, call, cast, if is used outside of function
-  // TODO: self Expression can only be used inside CallExpression params
   // TODO: FunctionStatement cannot have a FunctionStatement inside
   // TODO: FunctionStatement cannot have a StateStatement inside
 }

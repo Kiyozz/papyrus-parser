@@ -274,6 +274,16 @@ class Tree {
   }
 
   EventStatement _parseEventStatement(EventStatement node) {
+    if (_isInEvent || _isInFunction) {
+      throw UnexpectedTokenException(
+        message: 'A ${_isInFunction ? 'Function' : 'Event'}'
+            'Statement cannot have '
+            'Functions, States, or Events inside his BlockStatement',
+        start: node.start,
+        end: node.end,
+      );
+    }
+
     _isInEvent = true;
     _goNext();
     node.id = _parseIdentifier();
@@ -334,6 +344,16 @@ class Tree {
     NodeType? flag,
     int? startPos,
   }) {
+    if (_isInFunction || _isInEvent) {
+      throw UnexpectedTokenException(
+        message: 'A ${_isInFunction ? 'Function' : 'Event'}'
+            'Statement cannot have '
+            'Functions, States, or Events inside his BlockStatement',
+        start: node.start,
+        end: _pos,
+      );
+    }
+
     _isInState = true;
     node.flag = flag == NodeType.autoKw ? StateFlag.auto : null;
 
@@ -378,11 +398,11 @@ class Tree {
   }
 
   Node _parseReturnStatement(ReturnStatement node) {
-    if (_options.throwReturnOutside && !_isInFunctionContext) {
+    if (_options.throwReturnOutside && !_isInFunction) {
       throw UnexpectedTokenException(
         start: node.start,
         end: _pos,
-        message: 'Return statement can only be used in Function or Event',
+        message: 'Return statement can only be used in Function',
       );
     }
 
@@ -721,6 +741,16 @@ class Tree {
   }
 
   Node _parseFunctionStatement(FunctionStatement node) {
+    if (_isInFunction || _isInEvent) {
+      throw UnexpectedTokenException(
+        message: 'A ${_isInFunction ? 'Function' : 'Event'}Statement '
+            'cannot have Functions, States, or Events '
+            'inside his BlockStatement',
+        start: node.start,
+        end: node.end,
+      );
+    }
+
     _isInFunction = true;
     _goNext();
     node = _parseFunction(node);

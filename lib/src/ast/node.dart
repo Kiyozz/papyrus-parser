@@ -233,6 +233,21 @@ class FunctionStatement extends Node {
 
     return flag != null;
   }
+
+  bool get hasFunctionContext {
+    final block = body;
+
+    if (block == null) return false;
+
+    final elems = block.body;
+
+    return elems.any(
+      (elem) =>
+          elem is FunctionStatement ||
+          elem is EventStatement ||
+          elem is StateStatement,
+    );
+  }
 }
 
 class FunctionFlagDeclaration extends Node {
