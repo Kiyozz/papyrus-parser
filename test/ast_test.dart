@@ -429,7 +429,7 @@ void main() {
       'Full should have a type, a name, a setter, and a getter',
       () {
         final tree = Tree(
-          content: 'Int Property test = 1\n'
+          content: 'Int Property test = 1 Hidden\n'
               '  Int Function Get()\n'
               '  EndFunction\n'
               '  Function Set(Int value)\n'
@@ -448,6 +448,22 @@ void main() {
         final init = property.init as Literal;
         expect(init.value, 1);
         expect(init.raw, '1');
+      },
+    );
+
+    test(
+      'Full without Hidden flag should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Int Property test = 1\n'
+              '  int Function Get()\n'
+              '    Return 2\n'
+              '  Function\n'
+              'EndProperty',
+          options: TreeOptions(throwScriptnameMissing: false),
+        );
+
+        expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
       },
     );
 

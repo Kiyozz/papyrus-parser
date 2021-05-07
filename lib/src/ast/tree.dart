@@ -471,7 +471,17 @@ class Tree {
       );
     }
 
-    if (node.isHidden) {
+    if (node.hasNoFlags || node.isHidden) {
+      if (node.hasNoFlags) {
+        final name = node.id.name;
+
+        throw PropertyException(
+          'Missing Hidden flag for Full Property "$name"',
+          start: node.start,
+          end: _pos,
+        );
+      }
+
       final hasEndProperty = _content.contains(_endProperty, _start);
 
       if (!hasEndProperty) {
@@ -485,11 +495,6 @@ class Tree {
       }
 
       final fullNode = node.toPropertyFullDeclaration();
-      final hiddenFlag = _startNodeAt(start).toPropertyFlagDeclaration();
-
-      hiddenFlag.flag = PropertyFlag.hidden;
-
-      fullNode.flags.add(hiddenFlag);
 
       var block = _parseBlock(
         _startNode().toBlockStatement(),

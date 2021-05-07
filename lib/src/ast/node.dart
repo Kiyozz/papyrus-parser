@@ -424,11 +424,8 @@ class PropertyDeclaration extends Node {
   bool get isAuto => hasFlag(PropertyFlag.auto);
   bool get isAutoReadonly => hasFlag(PropertyFlag.autoReadonly);
   bool get isConditional => hasFlag(PropertyFlag.conditional);
-  bool get isHidden {
-    final hasHidden = hasFlag(PropertyFlag.hidden);
-
-    return hasHidden || (!isAuto && !isAutoReadonly && !isConditional);
-  }
+  bool get isHidden => hasFlag(PropertyFlag.hidden);
+  bool get hasNoFlags => flags.isEmpty;
 
   bool hasFlag(PropertyFlag propertyFlag) {
     return flags.any((flag) => flag.flag == propertyFlag);
