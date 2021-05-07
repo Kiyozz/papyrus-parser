@@ -5,23 +5,21 @@
 ### TODO LIST
 
 - [x] ScriptNameStatement
-- [x] ExtendsDeclaration
-- [x] ScriptNameFlag
 - [x] FunctionStatement
-- [x] FunctionFlag
-- [x] EventStatement
-- [x] EventFlag
-- [x] PropertyDeclaration
-- [x] PropertyFlag
-- [x] FullProperty
-- [x] IfStatement
-- [x] WhileStatement
-- [x] CastStatement
-- [x] CallStatement
-- [x] StateStatement
-- [x] ReturnStatement
 - [x] VariableDeclaration
+- [x] PropertyDeclaration
+- [x] ReturnStatement
+- [x] IfStatement
+- [x] CallExpression
+- [x] CastExpression
+- [x] Literal
+- [x] WhileStatement
+- [x] StateStatement
+- [x] EventStatement
+- [x] ParentMemberExpression
 - [x] MemberExpression
 - [x] ImportStatement
-- [ ] NewArray
-- [ ] Array index
+- [x] BinaryExpression
+- [x] AssignExpression
+- [x] LineTerminator
+- [x] NewExpression

@@ -1541,8 +1541,7 @@ void main() {
         );
 
         final importStatement = tree.parse().body.first as ImportStatement;
-        final id = importStatement.id as Identifier;
-        expect(id.name, equals('Debug'));
+        expect(importStatement.id.name, equals('Debug'));
       },
     );
 
