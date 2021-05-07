@@ -1684,7 +1684,11 @@ class Tree {
     final next = _next;
 
     if (next == code) {
-      return _finishOp(NodeType.incrementDecrement, 2);
+      throw UnexpectedTokenException(
+        message: '"++" and "--" operator is not supported in Papyrus',
+        start: _pos,
+        end: _pos,
+      );
     }
 
     if (next == $equal) return _finishOp(NodeType.assign, 2);

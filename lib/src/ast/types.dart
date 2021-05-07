@@ -60,7 +60,6 @@ enum NodeType {
   logical,
   logicalOr,
   logicalAnd,
-  incrementDecrement,
   plusMinus,
   relational,
   char,
