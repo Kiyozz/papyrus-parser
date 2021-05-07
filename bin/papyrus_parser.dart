@@ -5,14 +5,28 @@ import 'package:papyrus_parser/papyrus_parser.dart';
 
 void createProgram({required String content, required String filename}) {
   final tree = Tree(content: content, filename: filename);
-  final program = tree.parse();
   final jsonEncoder = JsonEncoder();
-  final json = program.toJson();
-  stdout.write(jsonEncoder.convert(json));
+
+  try {
+    final program = tree.parse();
+    final json = program.toJson();
+    print(jsonEncoder.convert({
+      'isException': false,
+      ...json,
+    }));
+  } on NodeException catch (e) {
+    final display = {
+      'start': e.startPos.toJson(),
+      'end': e.endPos.toJson(),
+      'message': e.toString(),
+      'type': e.runtimeType.toString(),
+      'isException': true,
+    };
+    print(jsonEncoder.convert(display));
+  }
 }
 
 void main(List<String> arguments) async {
-  print('start');
   if (arguments.length < 2) {
     print('The first argument should be psc filename');
     exit(1);

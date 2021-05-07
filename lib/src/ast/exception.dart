@@ -1,82 +1,90 @@
+import 'package:papyrus_parser/src/ast/position.dart';
+
 abstract class NodeException {
-  final int _start;
-  final int _end;
+  final int start;
+  final int end;
+  final Position startPos;
+  final Position endPos;
 
   const NodeException({
-    required int start,
-    required int end,
-  })   : _start = start,
-        _end = end;
+    required this.start,
+    required this.end,
+    required this.startPos,
+    required this.endPos,
+  });
 }
 
 class ScriptNameException extends NodeException {
-  final String? message;
+  final String message;
 
   const ScriptNameException({
-    this.message,
+    required this.message,
     required int start,
     required int end,
-  }) : super(start: start, end: end);
+    required Position startPos,
+    required Position endPos,
+  }) : super(start: start, end: end, startPos: startPos, endPos: endPos);
 
   @override
   String toString() {
-    if (message != null) {
-      return 'ScriptNameException: [$_start:$_end] $message';
-    }
-
-    return 'ScriptNameException: [$_start:$_end] Unexpected token. ScriptName statement is not complete';
+    return message;
   }
 }
 
 class UnexpectedTokenException extends NodeException {
-  final String? _message;
+  final String? message;
 
   const UnexpectedTokenException({
     required int start,
     required int end,
-    String? message,
-  })  : _message = message,
-        super(start: start, end: end);
+    required Position startPos,
+    required Position endPos,
+    this.message,
+  }) : super(start: start, end: end, startPos: startPos, endPos: endPos);
 
   @override
   String toString() {
-    if (_message != null) {
-      return 'UnexpectedTokenException: [$_start:$_end] $_message';
+    final message = this.message;
+
+    if (message != null) {
+      return message;
     }
 
-    return 'UnexpectedTokenException: [$_start:$_end] Unexpected token.';
+    return 'Unexpected token.';
   }
 }
 
 class PropertyException extends NodeException {
-  final String _message;
+  final String message;
 
   const PropertyException(
-    String message, {
+    this.message, {
     required int start,
     required int end,
-  })   : _message = message,
-        super(start: start, end: end);
+    required Position startPos,
+    required Position endPos,
+  }) : super(start: start, end: end, startPos: startPos, endPos: endPos);
 
   @override
   String toString() {
-    return 'PropertyException: [$_start:$_end] $_message';
+    return message;
   }
 }
 
 class BlockStatementException extends NodeException {
-  final String _message;
+  final String message;
 
   const BlockStatementException(
-    String message, {
+    this.message, {
     required int start,
     required int end,
-  })   : _message = message,
-        super(start: start, end: end);
+    required Position startPos,
+    required Position endPos,
+  }) : super(start: start, end: end, startPos: startPos, endPos: endPos);
 
   @override
   String toString() {
-    return 'BlockStatementException: [$_start:$_end] $_message';
+    return message;
   }
 }
 
@@ -87,28 +95,31 @@ class FunctionFlagException extends NodeException {
     required String flag,
     required int start,
     required int end,
+    required Position startPos,
+    required Position endPos,
   })   : _flag = flag,
-        super(start: start, end: end);
+        super(start: start, end: end, startPos: startPos, endPos: endPos);
 
   @override
   String toString() {
-    return 'FunctionFlagException: [$_start:$_end] unexpected flag $_flag';
+    return 'Unexpected flag $_flag';
   }
 }
 
 class StateStatementException extends NodeException {
-  final String _message;
+  final String message;
 
   const StateStatementException(
-    String message, {
+    this.message, {
     required int start,
     required int end,
-  })   : _message = message,
-        super(start: start, end: end);
+    required Position startPos,
+    required Position endPos,
+  }) : super(start: start, end: end, startPos: startPos, endPos: endPos);
 
   @override
   String toString() {
-    return 'StateStatementException: [$_start:$_end] $_message';
+    return message;
   }
 }
 
@@ -119,29 +130,32 @@ class EventFlagException extends NodeException {
     required String flag,
     required int start,
     required int end,
+    required Position startPos,
+    required Position endPos,
     int? pos,
   })  : _flag = flag,
-        super(start: start, end: end);
+        super(start: start, end: end, startPos: startPos, endPos: endPos);
 
   @override
   String toString() {
-    return 'EventFlagException: [$_start:$_end] unexpected flag $_flag';
+    return 'Unexpected flag $_flag';
   }
 }
 
 class ParentMemberException extends NodeException {
-  final String _message;
+  final String message;
 
   const ParentMemberException(
-    String message, {
+    this.message, {
     required int start,
     required int end,
+    required Position startPos,
+    required Position endPos,
     int? pos,
-  })  : _message = message,
-        super(start: start, end: end);
+  }) : super(start: start, end: end, startPos: startPos, endPos: endPos);
 
   @override
   String toString() {
-    return 'ParentMemberException: [$_start:$_end] $_message';
+    return message;
   }
 }

@@ -1,134 +1,145 @@
 import 'package:collection/collection.dart';
 import 'package:papyrus_parser/papyrus_parser.dart';
+import 'package:papyrus_parser/src/ast/position.dart';
 import 'types.dart';
 
 class Node {
   late NodeType type;
   int start;
   int end;
+  final String _content;
+
+  Position get startPos {
+    return Position.fromIndex(start, content: _content);
+  }
+
+  Position get endPos {
+    return Position.fromIndex(end, content: _content);
+  }
 
   Node({
     required this.start,
     this.end = 0,
-  });
+    required String content,
+  }) : _content = content;
 
   Program toProgram() {
-    return Program(start: start, end: end);
+    return Program(start: start, end: end, content: _content);
   }
 
   ScriptNameStatement toScriptNameStatement() {
-    return ScriptNameStatement(start: start, end: end);
+    return ScriptNameStatement(start: start, end: end, content: _content);
   }
 
   ScriptNameFlagDeclaration toScriptNameFlagDeclaration() {
-    return ScriptNameFlagDeclaration(start: start, end: end);
+    return ScriptNameFlagDeclaration(start: start, end: end, content: _content);
   }
 
   ExtendsDeclaration toExtendsDeclaration() {
-    return ExtendsDeclaration(start: start, end: end);
+    return ExtendsDeclaration(start: start, end: end, content: _content);
   }
 
   ExpressionStatement toExpressionStatement() {
-    return ExpressionStatement(start: start, end: end);
+    return ExpressionStatement(start: start, end: end, content: _content);
   }
 
   IfStatement toIfStatement() {
-    return IfStatement(start: start, end: end);
+    return IfStatement(start: start, end: end, content: _content);
   }
 
   FunctionStatement toFunctionStatement() {
-    return FunctionStatement(start: start, end: end);
+    return FunctionStatement(start: start, end: end, content: _content);
   }
 
   FunctionFlagDeclaration toFunctionFlagDeclaration() {
-    return FunctionFlagDeclaration(start: start, end: end);
+    return FunctionFlagDeclaration(start: start, end: end, content: _content);
   }
 
   BlockStatement toBlockStatement() {
-    return BlockStatement(start: start, end: end);
+    return BlockStatement(start: start, end: end, content: _content);
   }
 
   AssignExpression toAssignExpression() {
-    return AssignExpression(start: start, end: end);
+    return AssignExpression(start: start, end: end, content: _content);
   }
 
   Literal toLiteral() {
-    return Literal(start: start, end: end);
+    return Literal(start: start, end: end, content: _content);
   }
 
   Identifier toIdentifier() {
-    return Identifier(start: start, end: end);
+    return Identifier(start: start, end: end, content: _content);
   }
 
   BinaryExpression toBinaryExpression() {
-    return BinaryExpression(start: start, end: end);
+    return BinaryExpression(start: start, end: end, content: _content);
   }
 
   NewExpression toNewExpression() {
-    return NewExpression(start: start, end: end);
+    return NewExpression(start: start, end: end, content: _content);
   }
 
   MemberExpression toMemberExpression() {
-    return MemberExpression(start: start, end: end);
+    return MemberExpression(start: start, end: end, content: _content);
   }
 
   VariableDeclaration toVariableDeclaration() {
-    return VariableDeclaration(start: start, end: end);
+    return VariableDeclaration(start: start, end: end, content: _content);
   }
 
   Variable toVariable() {
-    return Variable(start: start, end: end);
+    return Variable(start: start, end: end, content: _content);
   }
 
   CallExpression toCallExpression() {
-    return CallExpression(start: start, end: end);
+    return CallExpression(start: start, end: end, content: _content);
   }
 
   PropertyDeclaration toPropertyDeclaration() {
-    return PropertyDeclaration(start: start, end: end);
+    return PropertyDeclaration(start: start, end: end, content: _content);
   }
 
   PropertyFlagDeclaration toPropertyFlagDeclaration() {
-    return PropertyFlagDeclaration(start: start, end: end);
+    return PropertyFlagDeclaration(start: start, end: end, content: _content);
   }
 
   ReturnStatement toReturnStatement() {
-    return ReturnStatement(start: start, end: end);
+    return ReturnStatement(start: start, end: end, content: _content);
   }
 
   CastExpression toCastExpression() {
-    return CastExpression(start: start, end: end);
+    return CastExpression(start: start, end: end, content: _content);
   }
 
   UnaryExpression toUnaryExpression() {
-    return UnaryExpression(start: start, end: end);
+    return UnaryExpression(start: start, end: end, content: _content);
   }
 
   WhileStatement toWhileStatement() {
-    return WhileStatement(start: start, end: end);
+    return WhileStatement(start: start, end: end, content: _content);
   }
 
   StateStatement toStateStatement() {
-    return StateStatement(start: start, end: end);
+    return StateStatement(start: start, end: end, content: _content);
   }
 
   EventStatement toEventStatement() {
-    return EventStatement(start: start, end: end);
+    return EventStatement(start: start, end: end, content: _content);
   }
 
   EventFlagDeclaration toEventFlagDeclaration() {
-    return EventFlagDeclaration(start: start, end: end);
+    return EventFlagDeclaration(start: start, end: end, content: _content);
   }
 
   ImportStatement toImportStatement() {
-    return ImportStatement(start: start, end: end);
+    return ImportStatement(start: start, end: end, content: _content);
   }
 
   Map<String, dynamic> toJson() {
     final json = {
       'type': type.name,
-      'start': start,
-      'end': end,
+      'start': startPos.toJson(),
+      'end': endPos.toJson(),
     };
 
     return json;
@@ -141,10 +152,22 @@ class Program extends Node {
   @override
   NodeType type = NodeType.program;
 
+  bool get hasScriptName {
+    if (body.isEmpty) return false;
+
+    final scriptName =
+        body.firstWhereOrNull((elem) => elem is ScriptNameStatement);
+
+    if (scriptName == null) return false;
+
+    return true;
+  }
+
   Program({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -174,8 +197,9 @@ class ScriptNameStatement extends Node {
 
   ScriptNameStatement({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -198,8 +222,9 @@ class ScriptNameFlagDeclaration extends Node {
 
   ScriptNameFlagDeclaration({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -214,19 +239,22 @@ class ScriptNameFlagDeclaration extends Node {
 
 class ExtendsDeclaration extends Node {
   late Identifier extended;
+  late Identifier meta;
 
   @override
   NodeType type = NodeType.extendsKw;
 
   ExtendsDeclaration({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
     final json = {
       ...super.toJson(),
+      'meta': meta.toJson(),
       'extended': extended.toJson(),
     };
 
@@ -242,8 +270,9 @@ class ExpressionStatement extends Node {
 
   ExpressionStatement({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -267,8 +296,9 @@ class IfStatement extends Node {
 
   IfStatement({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -298,8 +328,9 @@ class FunctionStatement extends Node {
 
   FunctionStatement({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   bool get isNative {
     final flag = flags.firstWhereOrNull((elem) {
@@ -347,8 +378,9 @@ class FunctionFlagDeclaration extends Node {
 
   FunctionFlagDeclaration({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   FunctionFlag flagFromType(NodeType type) {
     switch (type) {
@@ -361,6 +393,8 @@ class FunctionFlagDeclaration extends Node {
           message: 'Unexpected flag',
           start: start,
           end: end,
+          startPos: startPos,
+          endPos: endPos,
         );
     }
   }
@@ -384,8 +418,9 @@ class BlockStatement extends Node {
 
   BlockStatement({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -408,8 +443,9 @@ class AssignExpression extends Node {
 
   AssignExpression({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -433,8 +469,9 @@ class Literal extends Node {
 
   Literal({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -456,8 +493,9 @@ class Identifier extends Node {
 
   Identifier({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -480,8 +518,9 @@ class BinaryExpression extends Node {
 
   BinaryExpression({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -505,8 +544,9 @@ class NewExpression extends Node {
 
   NewExpression({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -530,8 +570,9 @@ class MemberExpression extends Node {
 
   MemberExpression({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -554,8 +595,9 @@ class VariableDeclaration extends Node {
 
   VariableDeclaration({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -580,8 +622,9 @@ class Variable extends Node {
 
   Variable({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -606,8 +649,9 @@ class CallExpression extends Node {
 
   CallExpression({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -632,11 +676,12 @@ class PropertyDeclaration extends Node {
 
   PropertyDeclaration({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   PropertyFullDeclaration toPropertyFullDeclaration() {
-    return PropertyFullDeclaration(start: start, end: end)
+    return PropertyFullDeclaration(start: start, end: end, content: _content)
       ..flags = flags
       ..id = id
       ..init = init
@@ -676,8 +721,9 @@ class PropertyFullDeclaration extends PropertyDeclaration {
 
   PropertyFullDeclaration({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -697,8 +743,9 @@ class PropertyFlagDeclaration extends Node {
 
   PropertyFlagDeclaration({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   PropertyFlag flagFromType(NodeType type) {
     switch (type) {
@@ -715,6 +762,8 @@ class PropertyFlagDeclaration extends Node {
           message: 'Unexpected flag',
           start: start,
           end: end,
+          startPos: startPos,
+          endPos: endPos,
         );
     }
   }
@@ -738,8 +787,9 @@ class ReturnStatement extends Node {
 
   ReturnStatement({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -761,8 +811,9 @@ class CastExpression extends Node {
 
   CastExpression({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -786,8 +837,9 @@ class UnaryExpression extends Node {
 
   UnaryExpression({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -812,8 +864,9 @@ class WhileStatement extends Node {
 
   WhileStatement({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -855,8 +908,9 @@ class StateStatement extends Node {
 
   StateStatement({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
@@ -884,8 +938,9 @@ class EventStatement extends Node {
 
   EventStatement({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   bool get isNative {
     final flag = flags.firstWhereOrNull((elem) {
@@ -917,8 +972,9 @@ class EventFlagDeclaration extends Node {
 
   EventFlagDeclaration({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   EventFlag flagFromType(NodeType type) {
     switch (type) {
@@ -929,6 +985,8 @@ class EventFlagDeclaration extends Node {
           message: 'Unexpected flag',
           start: start,
           end: end,
+          startPos: startPos,
+          endPos: endPos,
         );
     }
   }
@@ -952,8 +1010,9 @@ class ImportStatement extends Node {
 
   ImportStatement({
     required int start,
+    required String content,
     int end = 0,
-  }) : super(start: start, end: end);
+  }) : super(start: start, end: end, content: content);
 
   @override
   Map<String, dynamic> toJson() {
