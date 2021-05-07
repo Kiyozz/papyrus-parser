@@ -2076,6 +2076,4 @@ void main() {
 
   // TODO: review start/end of nodes
   // TODO: process line/column
-  // TODO: FunctionStatement cannot have a FunctionStatement inside
-  // TODO: FunctionStatement cannot have a StateStatement inside
 }

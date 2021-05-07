@@ -123,6 +123,16 @@ class Node {
   ImportStatement toImportStatement() {
     return ImportStatement(start: start, end: end);
   }
+
+  Map<String, dynamic> toJson() {
+    final json = {
+      'type': type.name,
+      'start': start,
+      'end': end,
+    };
+
+    return json;
+  }
 }
 
 class Program extends Node {
@@ -135,6 +145,16 @@ class Program extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'body': body.map((elem) => elem.toJson()).toList(),
+    };
+
+    return json;
+  }
 }
 
 class ScriptNameStatement extends Node {
@@ -156,6 +176,18 @@ class ScriptNameStatement extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'id': id.toJson(),
+      'extends': extendsDeclaration?.toJson(),
+      'flags': flags.map((flag) => flag.toJson()).toList(),
+    };
+
+    return json;
+  }
 }
 
 class ScriptNameFlagDeclaration extends Node {
@@ -168,6 +200,16 @@ class ScriptNameFlagDeclaration extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'flag': flag.name,
+    };
+
+    return json;
+  }
 }
 
 class ExtendsDeclaration extends Node {
@@ -180,6 +222,16 @@ class ExtendsDeclaration extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'extended': extended.toJson(),
+    };
+
+    return json;
+  }
 }
 
 class ExpressionStatement extends Node {
@@ -192,6 +244,16 @@ class ExpressionStatement extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'expression': expression.toJson(),
+    };
+
+    return json;
+  }
 }
 
 class IfStatement extends Node {
@@ -207,6 +269,19 @@ class IfStatement extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'endType': endType.name,
+      'test': test.toJson(),
+      'consequent': test.toJson(),
+      'alternate': alternate?.toJson(),
+    };
+
+    return json;
+  }
 }
 
 class FunctionStatement extends Node {
@@ -248,6 +323,20 @@ class FunctionStatement extends Node {
           elem is StateStatement,
     );
   }
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'id': id.toJson(),
+      'params': params.map((elem) => elem.toJson()).toList(),
+      'flags': flags.map((flag) => flag.toJson()).toList(),
+      'kind': kind,
+      'body': body?.toJson(),
+    };
+
+    return json;
+  }
 }
 
 class FunctionFlagDeclaration extends Node {
@@ -275,6 +364,16 @@ class FunctionFlagDeclaration extends Node {
         );
     }
   }
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'flag': flag.name,
+    };
+
+    return json;
+  }
 }
 
 class BlockStatement extends Node {
@@ -287,6 +386,16 @@ class BlockStatement extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'body': body.map((elem) => elem.toJson()).toList(),
+    };
+
+    return json;
+  }
 }
 
 class AssignExpression extends Node {
@@ -301,6 +410,18 @@ class AssignExpression extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'operator': operator,
+      'left': left.toJson(),
+      'right': right.toJson(),
+    };
+
+    return json;
+  }
 }
 
 class Literal extends Node {
@@ -314,6 +435,17 @@ class Literal extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'value': value.toString(),
+      'raw': raw,
+    };
+
+    return json;
+  }
 }
 
 class Identifier extends Node {
@@ -326,6 +458,16 @@ class Identifier extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'name': name,
+    };
+
+    return json;
+  }
 }
 
 class BinaryExpression extends Node {
@@ -340,13 +482,24 @@ class BinaryExpression extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'operator': operator,
+      'left': left.toJson(),
+      'right': right.toJson(),
+    };
+
+    return json;
+  }
 }
 
 class NewExpression extends Node {
   @override
   NodeType type = NodeType.newKw;
 
-  late Node callee;
   late Node argument;
   late Identifier meta;
 
@@ -354,6 +507,17 @@ class NewExpression extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'argument': argument.toJson(),
+      'meta': meta.toJson()
+    };
+
+    return json;
+  }
 }
 
 class MemberExpression extends Node {
@@ -368,6 +532,18 @@ class MemberExpression extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'object': object.toJson(),
+      'property': property.toJson(),
+      'computed': computed,
+    };
+
+    return json;
+  }
 }
 
 class VariableDeclaration extends Node {
@@ -380,6 +556,16 @@ class VariableDeclaration extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'variable': variable.toJson(),
+    };
+
+    return json;
+  }
 }
 
 class Variable extends Node {
@@ -396,6 +582,19 @@ class Variable extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'id': id.toJson(),
+      'init': init?.toJson(),
+      'kind': kind,
+      'isArray': isArray,
+    };
+
+    return json;
+  }
 }
 
 class CallExpression extends Node {
@@ -409,6 +608,17 @@ class CallExpression extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'callee': callee.toJson(),
+      'arguments': arguments.map((arg) => arg.toJson()).toList(),
+    };
+
+    return json;
+  }
 }
 
 class PropertyDeclaration extends Node {
@@ -445,6 +655,19 @@ class PropertyDeclaration extends Node {
   bool hasFlag(PropertyFlag propertyFlag) {
     return flags.any((flag) => flag.flag == propertyFlag);
   }
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'id': id.toJson(),
+      'init': init?.toJson(),
+      'kind': kind,
+      'flags': flags.map((flag) => flag.toJson()).toList(),
+    };
+
+    return json;
+  }
 }
 
 class PropertyFullDeclaration extends PropertyDeclaration {
@@ -455,6 +678,15 @@ class PropertyFullDeclaration extends PropertyDeclaration {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      ...super.toJson(),
+      'getter': getter?.toJson(),
+      'setter': setter?.toJson(),
+    };
+  }
 }
 
 class PropertyFlagDeclaration extends Node {
@@ -486,6 +718,16 @@ class PropertyFlagDeclaration extends Node {
         );
     }
   }
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'flag': flag.name,
+    };
+
+    return json;
+  }
 }
 
 class ReturnStatement extends Node {
@@ -498,6 +740,16 @@ class ReturnStatement extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'argument': argument?.toJson(),
+    };
+
+    return json;
+  }
 }
 
 class CastExpression extends Node {
@@ -511,6 +763,17 @@ class CastExpression extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'id': id.toJson(),
+      'kind': kind.toJson(),
+    };
+
+    return json;
+  }
 }
 
 class UnaryExpression extends Node {
@@ -525,6 +788,18 @@ class UnaryExpression extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'operator': operator,
+      'isPrefix': isPrefix,
+      'argument': argument.toJson(),
+    };
+
+    return json;
+  }
 }
 
 class WhileStatement extends Node {
@@ -539,6 +814,18 @@ class WhileStatement extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'endType': endType.name,
+      'test': test.toJson(),
+      'consequent': consequent.toJson(),
+    };
+
+    return json;
+  }
 }
 
 class StateStatement extends Node {
@@ -570,6 +857,19 @@ class StateStatement extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'endType': endType.name,
+      'id': id.toJson(),
+      'flag': flag?.name,
+      'body': body.toJson(),
+    };
+
+    return json;
+  }
 }
 
 class EventStatement extends Node {
@@ -593,6 +893,19 @@ class EventStatement extends Node {
     });
 
     return flag != null;
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'endType': endType.name,
+      'flags': flags.map((flag) => flag.toJson()).toList(),
+      'params': params.map((param) => param.toJson()).toList(),
+      'body': body?.toJson(),
+    };
+
+    return json;
   }
 }
 
@@ -619,6 +932,16 @@ class EventFlagDeclaration extends Node {
         );
     }
   }
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'flag': flag?.name,
+    };
+
+    return json;
+  }
 }
 
 class ImportStatement extends Node {
@@ -631,4 +954,14 @@ class ImportStatement extends Node {
     required int start,
     int end = 0,
   }) : super(start: start, end: end);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'id': id.toJson(),
+    };
+
+    return json;
+  }
 }

@@ -15,7 +15,7 @@
       "request": "launch",
       "type": "dart",
       "program": "./bin/papyrus_parser.dart",
-      "args": ["var/test.psc"]
+      "args": ["file", "var/test.psc", "test"]
     }
   ]
 }

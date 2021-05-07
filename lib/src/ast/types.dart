@@ -281,3 +281,58 @@ extension NodeTypeString on NodeType {
     }
   }
 }
+
+extension ScriptNameFlagString on ScriptNameFlag {
+  String get name {
+    switch (this) {
+      case ScriptNameFlag.conditional:
+        return 'Conditional';
+      case ScriptNameFlag.hidden:
+        return 'Hidden';
+    }
+  }
+}
+
+extension FunctionFlagString on FunctionFlag {
+  String get name {
+    switch (this) {
+      case FunctionFlag.global:
+        return 'Global';
+      case FunctionFlag.native:
+        return 'Native';
+    }
+  }
+}
+
+extension EventFlagString on EventFlag {
+  String get name {
+    switch (this) {
+      case EventFlag.native:
+        return 'Native';
+    }
+  }
+}
+
+extension StateFlagString on StateFlag {
+  String get name {
+    switch (this) {
+      case StateFlag.auto:
+        return 'Auto';
+    }
+  }
+}
+
+extension PropertyFlagString on PropertyFlag {
+  String get name {
+    switch (this) {
+      case PropertyFlag.auto:
+        return 'Auto';
+      case PropertyFlag.autoReadonly:
+        return 'AutoReadonly';
+      case PropertyFlag.conditional:
+        return 'Conditional';
+      case PropertyFlag.hidden:
+        return 'Hidden';
+    }
+  }
+}
