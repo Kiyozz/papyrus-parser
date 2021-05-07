@@ -64,7 +64,7 @@ void main() {
         final tree = Tree(
           content: 'ScriptName test\nScriptName toto',
           options: const TreeOptions(
-            throwWhenScriptnameMismatchFilename: false,
+            throwScriptnameMismatch: false,
           ),
         );
 
@@ -79,7 +79,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Function toto()\nEndFunction',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -97,7 +97,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Function toto(String n)\nEndFunction',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -120,7 +120,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Function toto(String[] n)\nEndFunction',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final functionBody = tree.parse().body.first as FunctionStatement;
@@ -141,7 +141,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Function toto(String v, String n = "")\nEndFunction',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -161,7 +161,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Function toto(String n = "")\n',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         expect(
@@ -176,7 +176,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Function toto() Global Native',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -196,7 +196,7 @@ void main() {
         final tree = Tree(
           content: 'Function toto() Global\n'
               'EndFunction',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -214,7 +214,7 @@ void main() {
         final tree = Tree(
           content: 'Function toto() unknownFlag\n'
               'EndFunction',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         expect(
@@ -230,7 +230,7 @@ void main() {
         final tree = Tree(
           content: 'Function toto(String n = "") global\n'
               'EndFunction',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final statement = tree.parse().body.first as FunctionStatement;
@@ -248,7 +248,7 @@ void main() {
           content: 'Function test()\n'
               '  Debug.Trace("[")\n'
               'EndFunction',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final statement = tree.parse().body.first as FunctionStatement;
@@ -271,7 +271,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'String val',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -289,7 +289,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'String[] val',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -307,7 +307,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'String val = ""',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -326,7 +326,11 @@ void main() {
       () {
         final tree = Tree(
           content: 'Bool val = ShouldStay() == false',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(
+            throwScriptnameMissing: false,
+            throwBinaryOutside: false,
+            throwCallOutside: false,
+          ),
         );
 
         final program = tree.parse();
@@ -347,7 +351,11 @@ void main() {
       () {
         final tree = Tree(
           content: 'String t = toto() as String',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(
+            throwScriptnameMissing: false,
+            throwCastOutside: false,
+            throwCallOutside: false,
+          ),
         );
 
         final program = tree.parse();
@@ -367,7 +375,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'String f = toto.init.toto',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final variableDeclaration =
@@ -384,7 +392,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Int Property test Auto',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -402,7 +410,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Int Property test = 1 AutoReadOnly',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -427,7 +435,7 @@ void main() {
               '  Function Set(Int value)\n'
               '  EndFunction\n'
               'EndProperty',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -449,7 +457,7 @@ void main() {
         final tree = Tree(
           content: 'Int Property test = 1 Hidden\n'
               'EndProperty',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
@@ -463,7 +471,7 @@ void main() {
           content: 'Int Property test = 1 Hidden\n'
               '  Int Function Get()\n'
               '  EndFunction',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
@@ -475,7 +483,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Int Property test AutoReadOnly\n',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
@@ -487,7 +495,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Int Property test Conditional\n',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
@@ -499,7 +507,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Int Property test Auto Conditional\n',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
@@ -520,6 +528,25 @@ void main() {
         );
       },
     );
+
+    test(
+      'used inside a Function/Event Statement should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Function test()\n'
+              '  Int Property test Auto\n'
+              'EndFunction',
+          options: TreeOptions(
+            throwScriptnameMissing: false,
+          ),
+        );
+
+        expect(
+          () => tree.parse(),
+          throwsA(TypeMatcher<PropertyException>()),
+        );
+      },
+    );
   });
 
   group('ReturnStatement', () {
@@ -530,7 +557,7 @@ void main() {
           content: 'Function test()\n'
               '  Return true\n'
               'EndFunction',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -551,7 +578,7 @@ void main() {
           content: 'Function test()\n'
               '  Return\n'
               'EndFunction',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -571,7 +598,7 @@ void main() {
           content: 'Function test()\n'
               '  Return shouldStay()\n'
               'EndFunction',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -593,7 +620,7 @@ void main() {
           content: 'Function test()\n'
               '  Return (shouldStay() && shouldStay())\n'
               'EndFunction',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -612,26 +639,15 @@ void main() {
       },
     );
 
-    test('used outside of FunctionStatement should throws an error', () {
-      final tree = Tree(
-        content: 'Return true',
-        options: TreeOptions(throwWhenMissingScriptname: false),
-      );
-
-      expect(
-        () => tree.parse(),
-        throwsA(TypeMatcher<UnexpectedTokenException>()),
-      );
-    });
-
     test(
       'argument should have two BinaryExpression, "*", ">=", and MemberExpression',
       () {
         final tree = Tree(
           content: 'Return (currentTime - lastTime) * 24 >= dt.  test',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenReturnOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwReturnOutside: false,
+            throwBinaryOutside: false,
           ),
         );
 
@@ -652,6 +668,20 @@ void main() {
         expect((member.property as Identifier).name, equals('test'));
       },
     );
+
+    test('used outside of FunctionStatement should throws an error', () {
+      final tree = Tree(
+        content: 'Return true',
+        options: TreeOptions(
+          throwScriptnameMissing: false,
+        ),
+      );
+
+      expect(
+        () => tree.parse(),
+        throwsA(TypeMatcher<UnexpectedTokenException>()),
+      );
+    });
   });
 
   group('IfStatement', () {
@@ -662,8 +692,8 @@ void main() {
           content: 'If true\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
           ),
         );
 
@@ -683,8 +713,8 @@ void main() {
           content: 'If (true)\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
           ),
         );
 
@@ -704,8 +734,9 @@ void main() {
           content: 'If (!((((((true)))))))\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
+            throwBinaryOutside: false,
           ),
         );
 
@@ -723,8 +754,10 @@ void main() {
           content: 'If (shouldStay() == true)\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
+            throwBinaryOutside: false,
+            throwCallOutside: false,
           ),
         );
 
@@ -747,8 +780,10 @@ void main() {
           content: 'If (shouldStay() == shouldStay())\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
+            throwCallOutside: false,
+            throwBinaryOutside: false,
           ),
         );
 
@@ -771,8 +806,10 @@ void main() {
           content: 'If (shouldStay(true) == shouldStay())\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
+            throwCallOutside: false,
+            throwBinaryOutside: false,
           ),
         );
 
@@ -796,8 +833,11 @@ void main() {
           content: 'If (shouldStay(shouldStay()) == shouldStay())\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
+            throwBinaryOutside: false,
+            throwCallOutside: false,
+            throwCastOutside: false,
           ),
         );
 
@@ -822,8 +862,9 @@ void main() {
           content: 'If (currentTime - lastTime) * 24 >= dt.test\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
+            throwBinaryOutside: false,
           ),
         );
 
@@ -854,8 +895,10 @@ void main() {
               '  ShouldStay()\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
+            throwBinaryOutside: false,
+            throwCallOutside: false,
           ),
         );
 
@@ -875,8 +918,10 @@ void main() {
           content: 'If t() as String\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
+            throwCastOutside: false,
+            throwCallOutside: false,
           ),
         );
 
@@ -898,8 +943,11 @@ void main() {
           content: 'If t() as String && a() as Int\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
+            throwBinaryOutside: false,
+            throwCallOutside: false,
+            throwCastOutside: false,
           ),
         );
 
@@ -931,8 +979,10 @@ void main() {
           content: 'If t() == -1\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
+            throwBinaryOutside: false,
+            throwCallOutside: false,
           ),
         );
 
@@ -961,8 +1011,8 @@ void main() {
               'Else\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
           ),
         );
 
@@ -986,8 +1036,8 @@ void main() {
               '  String v = ""\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
           ),
         );
 
@@ -1012,8 +1062,8 @@ void main() {
               'Else\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
           ),
         );
 
@@ -1047,8 +1097,8 @@ void main() {
               'Else\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
           ),
         );
 
@@ -1077,8 +1127,8 @@ void main() {
         final tree = Tree(
           content: 'shouldAssign(false, t = true)',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenCallExpressionOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwCallOutside: false,
           ),
         );
 
@@ -1105,8 +1155,8 @@ void main() {
         final tree = Tree(
           content: 'toto as String',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenCastExpressionOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwCastOutside: false,
           ),
         );
 
@@ -1125,8 +1175,9 @@ void main() {
         final tree = Tree(
           content: 'Float t = (chance * (1 - health / 100)) as Float',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenCastExpressionOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwCastOutside: false,
+            throwBinaryOutside: false,
           ),
         );
 
@@ -1153,8 +1204,9 @@ void main() {
         final tree = Tree(
           content: 'toto() as String',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenCastExpressionOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwCastOutside: false,
+            throwCallOutside: false,
           ),
         );
 
@@ -1175,7 +1227,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Int t = 0x0033FF',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -1194,7 +1246,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Int t = -1',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -1214,7 +1266,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Float t = -1.0',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -1234,7 +1286,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Actor t = None',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
@@ -1256,8 +1308,8 @@ void main() {
           content: 'While true\n'
               'EndWhile',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenWhileStatementOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwWhileOutside: false,
           ),
         );
 
@@ -1277,8 +1329,10 @@ void main() {
           content: 'While call() == -1\n'
               'EndWhile',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenWhileStatementOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwWhileOutside: false,
+            throwCallOutside: false,
+            throwBinaryOutside: false,
           ),
         );
 
@@ -1303,8 +1357,8 @@ void main() {
           content: 'While (true);\n'
               'EndWhile\n',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenWhileStatementOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwWhileOutside: false,
           ),
         );
 
@@ -1320,7 +1374,7 @@ void main() {
         final tree = Tree(
           content: 'Auto State Test\n'
               'EndState',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final state = tree.parse().body.first as StateStatement;
@@ -1338,7 +1392,7 @@ void main() {
               '  Int Function test()\n'
               '  EndFunction\n'
               'EndState',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final state = tree.parse().body.first as StateStatement;
@@ -1358,7 +1412,7 @@ void main() {
               '  State T\n'
               '  EndState\n'
               'EndState',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         expect(
@@ -1375,7 +1429,7 @@ void main() {
       () {
         final tree = Tree(
           content: 'Event OnTest() Native',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final event = tree.parse().body.first as EventStatement;
@@ -1393,7 +1447,7 @@ void main() {
         final tree = Tree(
           content: 'Event OnTest(String n)\n'
               'EndEvent',
-          options: TreeOptions(throwWhenMissingScriptname: false),
+          options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final event = tree.parse().body.first as EventStatement;
@@ -1482,7 +1536,7 @@ void main() {
         final tree = Tree(
           content: 'Import Debug',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
+            throwScriptnameMissing: false,
           ),
         );
 
@@ -1500,7 +1554,7 @@ void main() {
               '  Import Debug\n'
               'EndFunction',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
+            throwScriptnameMissing: false,
           ),
         );
 
@@ -1519,7 +1573,7 @@ void main() {
               '  Import Debug\n'
               'EndState',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
+            throwScriptnameMissing: false,
           ),
         );
 
@@ -1538,7 +1592,7 @@ void main() {
               '  Import Debug\n'
               'EndEvent',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
+            throwScriptnameMissing: false,
           ),
         );
 
@@ -1557,8 +1611,8 @@ void main() {
         final tree = Tree(
           content: '1 + serviceName',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenBinaryExpressionOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwBinaryOutside: false,
           ),
         );
 
@@ -1578,8 +1632,8 @@ void main() {
         final tree = Tree(
           content: '1 >= serviceName',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenBinaryExpressionOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwBinaryOutside: false,
           ),
         );
 
@@ -1601,7 +1655,7 @@ void main() {
         final tree = Tree(
           content: 'a = 1',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
+            throwScriptnameMissing: false,
           ),
         );
 
@@ -1620,7 +1674,7 @@ void main() {
         final tree = Tree(
           content: 'a += 1',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
+            throwScriptnameMissing: false,
           ),
         );
 
@@ -1639,7 +1693,8 @@ void main() {
         final tree = Tree(
           content: 'a = Uti.Get()',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
+            throwScriptnameMissing: false,
+            throwCallOutside: false,
           ),
         );
 
@@ -1665,8 +1720,9 @@ void main() {
               '  false\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
+            throwBinaryOutside: false,
           ),
         );
 
@@ -1687,8 +1743,8 @@ void main() {
               '  false\n'
               'EndIf',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
-            throwWhenIfOutsideOfFunctionOrEvent: false,
+            throwScriptnameMissing: false,
+            throwIfOutside: false,
           ),
         );
 
@@ -1705,7 +1761,8 @@ void main() {
       final tree = Tree(
         content: 'String[] s = new String[4]',
         options: TreeOptions(
-          throwWhenMissingScriptname: false,
+          throwScriptnameMissing: false,
+          throwNewOutside: false,
         ),
       );
 
@@ -1721,6 +1778,35 @@ void main() {
       final object = member.object as Identifier;
       expect(object.name, equals('String'));
     });
+
+    test('with index non Literal should throws an error', () {
+      final tree = Tree(
+        content: 'String[] s = new String[n()]',
+        options: TreeOptions(
+          throwScriptnameMissing: false,
+          throwNewOutside: false,
+        ),
+      );
+
+      expect(
+        () => tree.parse(),
+        throwsA(TypeMatcher<UnexpectedTokenException>()),
+      );
+    });
+
+    test('outside of Function/Event should throws an error', () {
+      final tree = Tree(
+        content: 'String[] s = new String[3]',
+        options: TreeOptions(
+          throwScriptnameMissing: false,
+        ),
+      );
+
+      expect(
+        () => tree.parse(),
+        throwsA(TypeMatcher<UnexpectedTokenException>()),
+      );
+    });
   });
 
   group('Array', () {
@@ -1730,7 +1816,7 @@ void main() {
         final tree = Tree(
           content: 'toto[4] = true',
           options: TreeOptions(
-            throwWhenMissingScriptname: false,
+            throwScriptnameMissing: false,
           ),
         );
 

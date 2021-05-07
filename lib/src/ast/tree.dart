@@ -4,7 +4,7 @@ import 'package:collection/collection.dart';
 import 'exception.dart';
 import 'types.dart';
 import 'node.dart';
-import 'tree/tree.dart';
+import 'tree/options.dart';
 import 'property.dart';
 
 class Context {
@@ -50,16 +50,17 @@ class Tree {
   /// Position information for the previous token
   int _lastTokenEnd = 0;
 
-  /// Useful to know if parsing inside of FunctionStatement
-  bool _inFunction = false;
+  /// Is parsing inside of FunctionStatement
+  bool _isInFunction = false;
 
-  /// Useful to know if parsing inside of EventStatement
-  bool _inEvent = false;
+  /// Is parsing inside of EventStatement
+  bool _isInEvent = false;
 
-  /// Useful to know if parsing inside of StateStatement
-  bool _inState = false;
+  /// Is parsing inside of StateStatement
+  bool _isInState = false;
 
-  bool get _inStatement => _inFunction || _inEvent || _inState;
+  bool get _isInFunctionContext => _isInFunction || _isInEvent;
+  bool get _isInValidContext => _isInFunctionContext || _isInState;
 
   /// The context stack is used to superficially track syntactic
   /// context to predict whether a regular expression is allowed in a
@@ -273,7 +274,7 @@ class Tree {
   }
 
   EventStatement _parseEventStatement(EventStatement node) {
-    _inEvent = true;
+    _isInEvent = true;
     _goNext();
     node.id = _parseIdentifier();
     _expect(NodeType.parenL);
@@ -323,7 +324,7 @@ class Tree {
     }
 
     node = _finishNode(node);
-    _inEvent = false;
+    _isInEvent = false;
 
     return node;
   }
@@ -333,7 +334,7 @@ class Tree {
     NodeType? flag,
     int? startPos,
   }) {
-    _inState = true;
+    _isInState = true;
     node.flag = flag == NodeType.autoKw ? StateFlag.auto : null;
 
     if (node.isAuto && startPos != null) {
@@ -353,7 +354,7 @@ class Tree {
       );
     }
 
-    _inState = false;
+    _isInState = false;
 
     return _finishNode(node);
   }
@@ -377,9 +378,7 @@ class Tree {
   }
 
   Node _parseReturnStatement(ReturnStatement node) {
-    if (_options.throwWhenReturnOutsideOfFunctionOrEvent &&
-        !_inFunction &&
-        !_inEvent) {
+    if (_options.throwReturnOutside && !_isInFunctionContext) {
       throw UnexpectedTokenException(
         start: node.start,
         end: _pos,
@@ -401,6 +400,14 @@ class Tree {
     required String kind,
   }) {
     var node = _startNodeAt(start).toPropertyDeclaration();
+
+    if (_isInFunctionContext) {
+      throw PropertyException(
+        'Cannot use a property inside of Function/Event',
+        start: node.start,
+        end: _pos,
+      );
+    }
 
     _goNext();
 
@@ -561,7 +568,7 @@ class Tree {
     node.id = _parseIdentifier();
 
     final filename = _filename;
-    if (_options.throwWhenScriptnameMismatchFilename && filename != null) {
+    if (_options.throwScriptnameMismatch && filename != null) {
       if (node.id.name.toLowerCase() != filename.toLowerCase()) {
         throw ScriptNameException(
           start: node.start,
@@ -656,6 +663,14 @@ class Tree {
   }
 
   Node _parseWhileStatement(WhileStatement node) {
+    if (_options.throwWhileOutside && !_isInFunctionContext) {
+      throw UnexpectedTokenException(
+        message: 'Cannot use WhileStatement outside of a Function/Event',
+        start: node.start,
+        end: _pos,
+      );
+    }
+
     _goNext();
 
     node.test = _parseExpression();
@@ -666,6 +681,14 @@ class Tree {
 
   Node _parseIfStatement(IfStatement node) {
     _goNext();
+
+    if (_options.throwIfOutside && !_isInFunctionContext) {
+      throw UnexpectedTokenException(
+        message: 'Cannot use IfStatement outside of a Function/Event',
+        start: node.start,
+        end: _pos,
+      );
+    }
 
     node.test = _parseExpression();
 
@@ -693,10 +716,13 @@ class Tree {
   }
 
   Node _parseFunctionStatement(FunctionStatement node) {
-    _inFunction = true;
+    _isInFunction = true;
     _goNext();
     node = _parseFunction(node);
-    _inFunction = false;
+
+    if (!_isInState) {
+      _isInFunction = false;
+    }
 
     return node;
   }
@@ -892,8 +918,19 @@ class Tree {
         _type == NodeType.slash ||
         _type == NodeType.modulo ||
         _type == NodeType.equality) {
-      final logical =
+      final isLogical =
           _type == NodeType.logicalOr || _type == NodeType.logicalAnd;
+
+      if (_options.throwBinaryOutside && !_isInFunctionContext) {
+        throw UnexpectedTokenException(
+          message: 'Cannot use a '
+              '${isLogical ? 'Logical' : 'Binary'}'
+              'Expression outside of Function/Event',
+          start: _pos,
+          end: _pos,
+        );
+      }
+
       final op = _value;
       _goNext();
       final startPos = _start;
@@ -903,7 +940,7 @@ class Tree {
         left,
         right,
         op,
-        logical: logical,
+        logical: isLogical,
       );
 
       return _parseExprOp(node, leftStartPos);
@@ -1016,7 +1053,7 @@ class Tree {
   }
 
   Node _parseImport() {
-    if (_inStatement) {
+    if (_isInValidContext) {
       throw UnexpectedTokenException(
         message: 'ImportStatement cannot appears inside any Statement',
         start: _pos,
@@ -1044,6 +1081,14 @@ class Tree {
   Node _parseNewExpression() {
     final node = _startNode().toNewExpression();
     final meta = _parseIdentifier();
+
+    if (_options.throwNewOutside && !_isInFunctionContext) {
+      throw UnexpectedTokenException(
+        message: 'Cannot create arrays outside of Function/Event',
+        start: node.start,
+        end: _pos,
+      );
+    }
 
     node.meta = meta;
     node.argument = _parseExprSubscripts();
@@ -1120,6 +1165,14 @@ class Tree {
 
       base = _finishNode(node);
     } else if (_eat(NodeType.parenL)) {
+      if (_options.throwCallOutside && !_isInFunctionContext) {
+        throw UnexpectedTokenException(
+          message: 'Cannot call a Function outside of a Function/Event',
+          start: startPos,
+          end: _pos,
+        );
+      }
+
       final exprList = _parseExprList(close: NodeType.parenR);
 
       final exprNode = _startNodeAt(startPos).toCallExpression();
@@ -1128,6 +1181,14 @@ class Tree {
 
       base = _finishNode(exprNode);
     } else if (_eat(NodeType.asKw)) {
+      if (_options.throwCastOutside && !_isInFunctionContext) {
+        throw UnexpectedTokenException(
+          message: 'Cannot use CastExpression outside of Function/Event',
+          start: startPos,
+          end: _pos,
+        );
+      }
+
       final castNode = _startNodeAt(startPos).toCastExpression();
 
       base = _parseCastExpression(
@@ -1267,8 +1328,12 @@ class Tree {
       return;
     }
 
+    final isThrowScriptName = _options.throwScriptnameMissing && _isFirstRead;
+
     if (_isIdentifierStart(code)) {
       return _readWord();
+    } else if (isThrowScriptName) {
+      throw ScriptNameException(start: _start, end: _pos);
     }
 
     return _tokenFromCode(code);
@@ -1318,12 +1383,11 @@ class Tree {
 
   void _readWord() {
     final word = _readWord1();
-
     var type = NodeType.name;
 
-    if (_options.throwWhenMissingScriptname &&
-        _isFirstRead &&
-        word.toLowerCase() != 'scriptname') {
+    final isThrowScriptName = _options.throwScriptnameMissing && _isFirstRead;
+
+    if (isThrowScriptName && word.toLowerCase() != 'scriptname') {
       throw ScriptNameException(start: _start, end: _pos);
     }
 
@@ -1332,6 +1396,7 @@ class Tree {
     }
 
     _isFirstRead = false;
+
     _finishToken(type, val: word);
   }
 
