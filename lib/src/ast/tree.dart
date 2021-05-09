@@ -197,6 +197,7 @@ class Tree {
 
         if (_type == NodeType.autoKw) {
           final autoType = _type;
+          final autoRaw = _value;
 
           _goNext();
 
@@ -206,6 +207,7 @@ class Tree {
               start: start,
               startPos: startPos,
               flag: autoType,
+              raw: autoRaw,
             );
           }
         }
@@ -344,11 +346,12 @@ class Tree {
       );
     }
 
-    EventFlagDeclaration createFlag(EventFlag flag) {
+    EventFlagDeclaration createFlag(EventFlag flag, String raw) {
       final declaration = _startNode().toEventFlagDeclaration();
       declaration.flag = flag;
+      declaration.raw = raw;
 
-      return _finishNode(declaration);
+      return _finishNode(declaration, end: _pos, endPos: _currentPos);
     }
 
     if (_hasNewLineBetweenLastToken() && _type == NodeType.nativeKw) {
@@ -365,7 +368,7 @@ class Tree {
       }
 
       if (_type == NodeType.nativeKw) {
-        node.flags.add(createFlag(EventFlag.native));
+        node.flags.add(createFlag(EventFlag.native, _value));
         hasNative = true;
         _goNext();
       } else {
@@ -386,6 +389,7 @@ class Tree {
   Node _parseStateStatement(
     StateStatement node, {
     NodeType? flag,
+    String? raw,
     int? start,
     Position? startPos,
   }) {
@@ -402,7 +406,18 @@ class Tree {
     }
 
     _isInState = true;
-    node.flag = flag == NodeType.autoKw ? StateFlag.auto : null;
+    if (flag == NodeType.autoKw &&
+        raw != null &&
+        start != null &&
+        startPos != null) {
+      final flagDeclaration =
+          _startNodeAt(start, startPos).toStateFlagDeclaration();
+
+      flagDeclaration.flag = StateFlag.auto;
+      flagDeclaration.raw = raw;
+
+      node.flag = _finishNode(flagDeclaration);
+    }
 
     if (node.isAuto && start != null) {
       node.start = start;
@@ -491,12 +506,14 @@ class Tree {
     node.id = _parseIdentifier();
     node.kind = kind;
 
+    final name = node.id.name;
+
     if (_eat(NodeType.assign)) {
       node.init = _parseMaybeAssign();
 
       if (node.init?.type != NodeType.literal) {
         throw PropertyException(
-          'Property init declaration should be a constant',
+          '"$name" Property init declaration should be a constant',
           start: _pos,
           end: _pos,
           startPos: _currentPos,
@@ -505,32 +522,41 @@ class Tree {
       }
     }
 
+    var lastFlagEnd = _pos;
+    var lastFlagEndPos = _currentPos;
+
     while (_type == NodeType.hiddenKw ||
         _type == NodeType.autoKw ||
         _type == NodeType.conditionalKw ||
         _type == NodeType.autoReadOnlyKw) {
       final flagDeclaration = _startNode().toPropertyFlagDeclaration();
 
-      if ((_scriptName?.isConditional ?? false) && !node.isConditional) {
-        throw PropertyException(
-          'A Conditional Property must appears in ScriptName flagged Conditional',
-          start: node.start,
-          end: _pos,
-          startPos: node.startPos,
-          endPos: _currentPos,
-        );
-      }
-
       flagDeclaration.flag = flagDeclaration.flagFromType(_type);
+      flagDeclaration.raw = _value;
 
       node.flags.add(flagDeclaration);
+
+      lastFlagEnd = _pos;
+      lastFlagEndPos = _currentPos;
 
       _goNext();
     }
 
+    final isScriptNameConditional = _scriptName?.isConditional ?? false;
+
+    if (node.isConditional && !isScriptNameConditional) {
+      throw PropertyException(
+        'Conditional Property "$name" must appears in ScriptName flagged Conditional',
+        start: node.start,
+        end: lastFlagEnd,
+        startPos: node.startPos,
+        endPos: lastFlagEndPos,
+      );
+    }
+
     if (node.isAutoReadonly && node.init == null) {
       throw PropertyException(
-        'A AutoReadOnly should have a constant init declaration',
+        'AutoReadOnly Property "$name" should have a constant init declaration',
         start: node.start,
         end: _pos,
         startPos: node.startPos,
@@ -540,7 +566,7 @@ class Tree {
 
     if (node.isConditional && !node.isAutoOrAutoReadonly) {
       throw PropertyException(
-        'A Conditional Property must be Auto or AutoReadOnly',
+        'Conditional Property "$name" must be Auto or AutoReadOnly',
         start: node.start,
         end: _pos,
         startPos: node.startPos,
@@ -560,8 +586,6 @@ class Tree {
 
     if (node.hasNoFlags || node.isHidden) {
       if (node.hasNoFlags) {
-        final name = node.id.name;
-
         throw PropertyException(
           'Missing Hidden flag for Full Property "$name"',
           start: node.start,
@@ -574,8 +598,6 @@ class Tree {
       final hasEndProperty = _content.contains(_endProperty, _start);
 
       if (!hasEndProperty) {
-        final name = node.id.name;
-
         throw PropertyException(
           'Missing "EndProperty" for "$name" Property',
           start: node.start,
@@ -594,58 +616,73 @@ class Tree {
 
       if (block.body.isEmpty) {
         throw PropertyException(
-          'A full property must have a getter and/or a setter',
+          'Full property "$name" must have a getter and/or a setter',
           start: node.start,
-          end: _pos,
+          end: block.end,
           startPos: node.startPos,
-          endPos: _currentPos,
+          endPos: block.endPos,
         );
       }
 
-      final getter = block.body.firstWhereOrNull(
-          (element) => PropertyParser(element: element).isGetter);
-      final setter = block.body.firstWhereOrNull(
-          (element) => PropertyParser(element: element).isSetter);
+      try {
+        final getter = block.body.firstWhereOrNull(
+            (element) => PropertyParser(element: element).isGetter);
+        final setter = block.body.firstWhereOrNull(
+            (element) => PropertyParser(element: element).isSetter);
+        if (setter != null) {
+          fullNode.setter = setter as FunctionStatement;
 
-      if (setter != null) {
-        fullNode.setter = setter as FunctionStatement;
+          final isEmpty = setter.params.isEmpty;
+          final hasMoreOneParams = setter.params.length > 1;
+          final isNotSameKind = setter.params.isNotEmpty &&
+              setter.params.first.variable.kind != node.kind;
 
-        if (setter.params.isEmpty && setter.params.length > 1) {
-          throw PropertyException(
-            'Setter should have one parameter with the same type as the Property',
-            start: node.start,
-            end: _pos,
-            startPos: node.startPos,
-            endPos: _currentPos,
-          );
+          if (isEmpty || hasMoreOneParams || isNotSameKind) {
+            throw PropertyException(
+              'Setter should have one parameter '
+              'with the same type as the Property "$name"',
+              start: setter.start,
+              end: setter.end,
+              startPos: setter.startPos,
+              endPos: setter.endPos,
+            );
+          }
         }
+
+        if (getter != null) {
+          fullNode.getter = getter as FunctionStatement;
+
+          if (getter.kind != node.kind) {
+            throw PropertyException(
+              'Getter should return the same type as the Property "$name"',
+              start: getter.start,
+              end: getter.end,
+              startPos: getter.startPos,
+              endPos: getter.endPos,
+            );
+          }
+
+          if (getter.params.isNotEmpty) {
+            throw PropertyException(
+              'Property "$name" getter cannot have parameters',
+              start: getter.start,
+              end: getter.end,
+              startPos: getter.startPos,
+              endPos: getter.endPos,
+            );
+          }
+        }
+
+        node = fullNode;
+      } on Exception catch (e) {
+        throw PropertyException(
+          e.toString(),
+          start: start,
+          end: _end,
+          startPos: startPos,
+          endPos: _endPos,
+        );
       }
-
-      if (getter != null) {
-        fullNode.getter = getter as FunctionStatement;
-
-        if (getter.kind != node.kind) {
-          throw PropertyException(
-            'Getter should return the same type as the Property',
-            start: node.start,
-            end: _pos,
-            startPos: node.startPos,
-            endPos: _currentPos,
-          );
-        }
-
-        if (getter.params.isNotEmpty) {
-          throw PropertyException(
-            'Property getter cannot have parameters',
-            start: getter.start,
-            end: _pos,
-            startPos: getter.startPos,
-            endPos: _currentPos,
-          );
-        }
-      }
-
-      node = fullNode;
     }
 
     return _finishNode(node);
@@ -709,6 +746,7 @@ class Tree {
 
     while (_type == NodeType.conditionalKw || _type == NodeType.hiddenKw) {
       final startType = _type;
+      final startValue = _value;
       final node = _startNode().toScriptNameFlagDeclaration();
 
       _goNext();
@@ -716,6 +754,7 @@ class Tree {
       node.flag = startType == NodeType.conditionalKw
           ? ScriptNameFlag.conditional
           : ScriptNameFlag.hidden;
+      node.raw = startValue;
 
       flags.add(_finishNode(node));
     }
@@ -893,11 +932,12 @@ class Tree {
       );
     }
 
-    FunctionFlagDeclaration createFlag(FunctionFlag flag) {
+    FunctionFlagDeclaration createFlag(FunctionFlag flag, String raw) {
       final declaration = _startNode().toFunctionFlagDeclaration();
       declaration.flag = flag;
+      declaration.raw = raw;
 
-      return _finishNode(declaration);
+      return _finishNode(declaration, end: _pos, endPos: _currentPos);
     }
 
     if (_hasNewLineBetweenLastToken() &&
@@ -920,12 +960,12 @@ class Tree {
 
       switch (_type) {
         case NodeType.globalKw:
-          node.flags.add(createFlag(FunctionFlag.global));
+          node.flags.add(createFlag(FunctionFlag.global, _value));
           hasGlobal = true;
           _goNext();
           break;
         case NodeType.nativeKw:
-          node.flags.add(createFlag(FunctionFlag.native));
+          node.flags.add(createFlag(FunctionFlag.native, _value));
           hasNative = true;
           _goNext();
           break;
@@ -1421,8 +1461,8 @@ class Tree {
     node.params = _parseBindingList(NodeType.parenR, false);
   }
 
-  List<Node> _parseBindingList(NodeType type, bool allowEmpty) {
-    final elements = <Node>[];
+  List<VariableDeclaration> _parseBindingList(NodeType type, bool allowEmpty) {
+    final elements = <VariableDeclaration>[];
     var first = true;
 
     while (!_eat(type)) {
@@ -1557,12 +1597,15 @@ class Tree {
     _context.addToken(prevType);
   }
 
-  T _finishNode<T extends Node>(T node, {int? pos, NodeType? type}) {
-    final usedPos = pos ?? _lastTokenEnd;
-
+  T _finishNode<T extends Node>(
+    T node, {
+    int? end,
+    Position? endPos,
+    NodeType? type,
+  }) {
     node.type = type ?? node.type;
-    node.end = usedPos;
-    node.endPos = _lastTokenEndPos;
+    node.end = end ?? _lastTokenEnd;
+    node.endPos = endPos ?? _lastTokenEndPos;
 
     _context.addNode(node);
 
@@ -2236,9 +2279,13 @@ class Tree {
       case NodeType.propertyKw:
         return NodeType.endPropertyKw;
       default:
-        // TODO: error type has no close type
-
-        throw Exception();
+        throw UnexpectedTokenException(
+          message: 'Unexpected token ${type.name}',
+          start: _start,
+          end: _end,
+          startPos: _startPos,
+          endPos: _endPos,
+        );
     }
   }
 

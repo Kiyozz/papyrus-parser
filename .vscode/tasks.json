@@ -26,7 +26,7 @@
         "Dart: create build directory"
       ],
       "command": "dart",
-			"args": ["compile", "exe", "bin/papyrus_parser.dart", "-o", "build/papyrus-parser"]
+			"args": ["compile", "exe", "bin/papyrus_linter.dart", "-o", "build/papyrus-linter"]
 		}
   ]
 }

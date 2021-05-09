@@ -1,3 +1,5 @@
+import 'package:papyrus_parser/papyrus_parser.dart';
+
 import 'node.dart';
 import 'types.dart';
 
@@ -23,22 +25,14 @@ class PropertyParser {
     final isFunction = element.type == NodeType.functionKw;
 
     if (!isFunction) {
-      throw Exception();
+      throw Exception('A FullProperty getter and setter have to be function');
     }
 
     element as FunctionStatement;
 
-    if (element.id == null) {
-      // TODO: cannot find function name
-
-      throw Exception();
-    }
-
-    final id = element.id as Identifier;
+    final id = element.id;
 
     if (!_getterOrSetterRegExp.hasMatch(id.name)) {
-      // TODO: full property must has either get or set function
-
       return null;
     }
 

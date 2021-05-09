@@ -11,11 +11,35 @@ import 'rule.dart';
 export 'linter_context.dart';
 export 'report.dart';
 
+class IdentifierParams {
+  final NodeType from;
+  final LinterContext context;
+  final Identifier id;
+
+  const IdentifierParams({
+    required this.from,
+    required this.context,
+    required this.id,
+  });
+}
+
+class FlagParams {
+  final NodeType from;
+  final LinterContext context;
+  final FlagDeclaration flag;
+
+  const FlagParams({
+    required this.from,
+    required this.context,
+    required this.flag,
+  });
+}
+
 class Linter {
   final Tree _tree;
   final LinterContext _context;
   final List<Rule> rules = const [
-    CamelcaseRule(),
+    NamingConventionRule(),
   ];
 
   const Linter({
@@ -68,29 +92,129 @@ void _processRule(StartParam param) {
   final port = param.port;
   final rule = param.rule;
 
-  if (node is ScriptNameStatement) {
-    if (wantToListenTo(NodeType.id, rule)) {
-      rule.start(node: node.id, context: context);
-    }
-  }
-
-  if (node is FunctionStatement) {
-    if (wantToListenTo(NodeType.id, rule)) {
-      rule.start(node: node.id, context: context);
-    }
-  }
-
-  if (node is VariableDeclaration) {
-    if (wantToListenTo(NodeType.variable, rule)) {
-      rule.start(node: node.variable, context: context);
-    }
-  }
+  _processNode(node: node, context: context, rule: rule);
 
   port.send(context);
 }
 
-bool wantToListenTo(NodeType type, Rule rule) {
-  return rule.listenTypes.contains(type);
-}
+void _processNode({
+  required Node node,
+  required LinterContext context,
+  required Rule rule,
+}) {
+  final idParams = <IdentifierParams>[];
+  final flagParams = <FlagParams>[];
 
-bool wantToListenIdentifier(Rule rule) => wantToListenTo(NodeType.id, rule);
+  if (node is ScriptNameStatement) {
+    idParams.add(
+      IdentifierParams(from: node.type, context: context, id: node.id),
+    );
+
+    for (final flag in node.flags) {
+      flagParams.add(
+        FlagParams(from: node.type, context: context, flag: flag),
+      );
+    }
+  }
+
+  if (node is PropertyDeclaration) {
+    if (node.isFull) {
+      node as PropertyFullDeclaration;
+
+      final getter = node.getter;
+      final setter = node.setter;
+
+      if (getter != null) {
+        _processNode(node: getter, context: context, rule: rule);
+      }
+
+      if (setter != null) {
+        _processNode(node: setter, context: context, rule: rule);
+      }
+    }
+
+    for (final flag in node.flags) {
+      flagParams.add(
+        FlagParams(from: node.type, context: context, flag: flag),
+      );
+    }
+  }
+
+  if (node is FunctionStatement) {
+    idParams.add(
+      IdentifierParams(from: node.type, context: context, id: node.id),
+    );
+
+    for (final blockNode in (node.body?.body ?? [])) {
+      _processNode(node: blockNode, context: context, rule: rule);
+    }
+
+    for (final param in node.params) {
+      _processNode(node: param, context: context, rule: rule);
+    }
+
+    for (final flag in node.flags) {
+      flagParams.add(
+        FlagParams(from: node.type, context: context, flag: flag),
+      );
+    }
+  }
+
+  if (node is EventStatement) {
+    idParams.add(
+      IdentifierParams(from: node.type, context: context, id: node.id),
+    );
+
+    for (final blockNode in (node.body?.body ?? [])) {
+      _processNode(node: blockNode, context: context, rule: rule);
+    }
+
+    for (final flag in node.flags) {
+      flagParams.add(
+        FlagParams(from: node.type, context: context, flag: flag),
+      );
+    }
+  }
+
+  if (node is StateStatement) {
+    idParams.add(
+      IdentifierParams(from: node.type, context: context, id: node.id),
+    );
+
+    for (final blockNode in node.body.body) {
+      _processNode(node: blockNode, context: context, rule: rule);
+    }
+
+    final flag = node.flag;
+
+    if (flag != null) {
+      flagParams.add(FlagParams(from: node.type, context: context, flag: flag));
+    }
+  }
+
+  if (node is VariableDeclaration) {
+    idParams.add(
+      IdentifierParams(
+        from: NodeType.variable,
+        context: context,
+        id: node.variable.id,
+      ),
+    );
+  }
+
+  for (final param in idParams) {
+    rule.startIdentifier(
+      node: param.id,
+      context: param.context,
+      from: param.from,
+    );
+  }
+
+  for (final param in flagParams) {
+    rule.startFlag(
+      node: param.flag,
+      context: param.context,
+      from: param.from,
+    );
+  }
+}

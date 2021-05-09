@@ -4,7 +4,7 @@ import '../ast/types.dart';
 import '../ast/node.dart';
 import 'linter_context.dart';
 
-export 'rule/camelcase.dart';
+export 'rule/namingConvention.dart';
 
 class StartParam {
   final SendPort port;
@@ -24,14 +24,22 @@ abstract class Rule {
   final String name;
   final bool hasAutoFix;
   final Map<String, String> messages;
-  final List<NodeType> listenTypes;
 
   const Rule({
     required this.name,
     required this.hasAutoFix,
     required this.messages,
-    required this.listenTypes,
   });
 
-  void start({required Node node, required LinterContext context});
+  void startIdentifier({
+    required Identifier node,
+    required LinterContext context,
+    required NodeType from,
+  });
+
+  void startFlag({
+    required FlagDeclaration node,
+    required LinterContext context,
+    required NodeType from,
+  });
 }

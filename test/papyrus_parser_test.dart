@@ -78,7 +78,8 @@ void main() {
       'should have a name and no arguments',
       () {
         final tree = Tree(
-          content: 'Function toto()\nEndFunction',
+          content: 'Function toto()\n'
+              'EndFunction',
           options: TreeOptions(throwScriptnameMissing: false),
         );
 
@@ -96,7 +97,8 @@ void main() {
       'should have a name and one argument without an init declaration',
       () {
         final tree = Tree(
-          content: 'Function toto(String n)\nEndFunction',
+          content: 'Function toto(String n)\n'
+              'EndFunction',
           options: TreeOptions(throwScriptnameMissing: false),
         );
 
@@ -119,7 +121,8 @@ void main() {
       'should have a Array VariableDeclaration',
       () {
         final tree = Tree(
-          content: 'Function toto(String[] n)\nEndFunction',
+          content: 'Function toto(String[] n)\n'
+              'EndFunction',
           options: TreeOptions(throwScriptnameMissing: false),
         );
 
@@ -128,7 +131,7 @@ void main() {
         expect(functionBody.body, isNotNull);
         expect(functionBody.type, equals(NodeType.functionKw));
         expect(functionBody.params, hasLength(1));
-        final param = functionBody.params.first as VariableDeclaration;
+        final param = functionBody.params.first;
         final variable = param.variable;
         expect(variable.kind, 'String[]');
         expect(variable.init, isNull);
@@ -140,14 +143,15 @@ void main() {
       'should have a name, two arguments, one with an init declaration',
       () {
         final tree = Tree(
-          content: 'Function toto(String v, String n = "")\nEndFunction',
+          content: 'Function toto(String v, String n = "")\n'
+              'EndFunction',
           options: TreeOptions(throwScriptnameMissing: false),
         );
 
         final program = tree.parse();
         expect(program.body, hasLength(1));
         final body = program.body.first as FunctionStatement;
-        final param = body.params[1] as VariableDeclaration;
+        final param = body.params[1];
         final variable = param.variable;
         expect(variable.kind, equals('String'));
         expect(variable.id.name, equals('n'));
@@ -562,6 +566,21 @@ void main() {
     );
 
     test(
+      'Conditional in ScriptName not Conditional should throws an error',
+      () {
+        final tree = Tree(
+          content: 'ScriptName Test\n'
+              'Int Property test = 1 Auto Conditional\n'
+              'Function t()\n'
+              'EndFunction',
+          options: TreeOptions(),
+        );
+
+        expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
+      },
+    );
+
+    test(
       'Full without getter and setter should throws an error',
       () {
         final tree = Tree(
@@ -575,12 +594,43 @@ void main() {
     );
 
     test(
-      'Full without Endshould throws an error',
+      'Full without End should throws an error',
       () {
         final tree = Tree(
           content: 'Int Property test = 1 Hidden\n'
               '  Int Function Get()\n'
               '  EndFunction',
+          options: TreeOptions(throwScriptnameMissing: false),
+        );
+
+        expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
+      },
+    );
+
+    test(
+      'Full Setter without params should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Int Property test = 1 Hidden\n'
+              '  Function Set()\n'
+              '  EndFunction\n'
+              'EndProperty',
+          options: TreeOptions(throwScriptnameMissing: false),
+        );
+
+        expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
+      },
+    );
+
+    test(
+      'Full Setter with a param not matching property type'
+      ' should throws an error',
+      () {
+        final tree = Tree(
+          content: 'Int Property test = 1 Hidden\n'
+              '  Function Set(String n)\n'
+              '  EndFunction\n'
+              'EndProperty',
           options: TreeOptions(throwScriptnameMissing: false),
         );
 
@@ -1495,22 +1545,6 @@ void main() {
 
   group('StateStatement', () {
     test(
-      'should have a Auto flag and an empty BlockStatement',
-      () {
-        final tree = Tree(
-          content: 'Auto State Test\n'
-              'EndState',
-          options: TreeOptions(throwScriptnameMissing: false),
-        );
-
-        final state = tree.parse().body.first as StateStatement;
-        expect(state.flag, equals(StateFlag.auto));
-        expect(state.id.name, equals('Test'));
-        expect(state.body.body, isEmpty);
-      },
-    );
-
-    test(
       'should have a FunctionStatement in a BlockStatement',
       () {
         final tree = Tree(
@@ -1527,6 +1561,22 @@ void main() {
         final functionStatement = state.body.body.first as FunctionStatement;
         expect(functionStatement.id.name, equals('test'));
         expect(functionStatement.kind, equals('Int'));
+      },
+    );
+
+    test(
+      'should have a Auto flag',
+      () {
+        final tree = Tree(
+          content: 'Auto State Test\n'
+              '  Int Function test()\n'
+              '  EndFunction\n'
+              'EndState',
+          options: TreeOptions(throwScriptnameMissing: false),
+        );
+
+        final state = tree.parse().body.first as StateStatement;
+        expect(state.flag, isNotNull);
       },
     );
 
@@ -2075,4 +2125,5 @@ void main() {
   );
 
   // TODO: variableDeclaration.variable start not good
+  // TODO: variable in function param must have init contants only
 }

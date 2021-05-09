@@ -162,6 +162,15 @@ class Node {
     );
   }
 
+  StateFlagDeclaration toStateFlagDeclaration() {
+    return StateFlagDeclaration(
+      start: start,
+      startPos: startPos,
+      end: end,
+      endPos: endPos,
+    );
+  }
+
   EventStatement toEventStatement() {
     return EventStatement(
       start: start,
@@ -235,6 +244,18 @@ class Program extends Node {
   }
 }
 
+class FlagDeclaration<T> extends Node {
+  late T flag;
+  late String raw;
+
+  FlagDeclaration({
+    required int start,
+    required Position startPos,
+    int end = 0,
+    Position? endPos,
+  }) : super(start: start, startPos: startPos, end: end, endPos: endPos);
+}
+
 class ScriptNameStatement extends Node {
   late Identifier id;
   ExtendsDeclaration? extendsDeclaration;
@@ -270,11 +291,9 @@ class ScriptNameStatement extends Node {
   }
 }
 
-class ScriptNameFlagDeclaration extends Node {
+class ScriptNameFlagDeclaration extends FlagDeclaration<ScriptNameFlag> {
   @override
   NodeType type = NodeType.flagKw;
-
-  late ScriptNameFlag flag;
 
   ScriptNameFlagDeclaration({
     required int start,
@@ -381,7 +400,7 @@ class FunctionStatement extends Node {
 
   late Identifier id;
   BlockStatement? body;
-  List<Node> params = [];
+  List<VariableDeclaration> params = [];
   List<FunctionFlagDeclaration> flags = [];
 
   String kind = '';
@@ -431,11 +450,9 @@ class FunctionStatement extends Node {
   }
 }
 
-class FunctionFlagDeclaration extends Node {
+class FunctionFlagDeclaration extends FlagDeclaration<FunctionFlag> {
   @override
   NodeType type = NodeType.flagKw;
-
-  late FunctionFlag flag;
 
   FunctionFlagDeclaration({
     required int start,
@@ -814,7 +831,7 @@ class PropertyFullDeclaration extends PropertyDeclaration {
   }
 }
 
-class PropertyFlagDeclaration extends Node {
+class PropertyFlagDeclaration extends FlagDeclaration<PropertyFlag> {
   @override
   NodeType type = NodeType.flagKw;
 
@@ -970,10 +987,10 @@ class StateStatement extends Node {
   NodeType type = NodeType.stateKw;
   NodeType endType = NodeType.endStateKw;
   late Identifier id;
-  StateFlag? flag;
+  StateFlagDeclaration? flag;
   late BlockStatement body;
 
-  bool get isAuto => flag == StateFlag.auto;
+  bool get isAuto => flag?.flag == StateFlag.auto;
 
   bool get isValid {
     final body = this.body;
@@ -1003,8 +1020,30 @@ class StateStatement extends Node {
       ...super.toJson(),
       'endType': endType.name,
       'id': id.toJson(),
-      'flag': flag?.name,
+      'flag': flag?.toJson(),
       'body': body.toJson(),
+    };
+
+    return json;
+  }
+}
+
+class StateFlagDeclaration extends FlagDeclaration<StateFlag> {
+  @override
+  NodeType type = NodeType.flagKw;
+
+  StateFlagDeclaration({
+    required int start,
+    required Position startPos,
+    int end = 0,
+    Position? endPos,
+  }) : super(start: start, startPos: startPos, end: end, endPos: endPos);
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = {
+      ...super.toJson(),
+      'flag': flag.name,
     };
 
     return json;
@@ -1050,11 +1089,9 @@ class EventStatement extends Node {
   }
 }
 
-class EventFlagDeclaration extends Node {
+class EventFlagDeclaration extends FlagDeclaration<EventFlag> {
   @override
   NodeType type = NodeType.flagKw;
-
-  EventFlag? flag;
 
   EventFlagDeclaration({
     required int start,
@@ -1082,7 +1119,7 @@ class EventFlagDeclaration extends Node {
   Map<String, dynamic> toJson() {
     final json = {
       ...super.toJson(),
-      'flag': flag?.name,
+      'flag': flag.name,
     };
 
     return json;
