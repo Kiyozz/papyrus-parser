@@ -1,5 +1,32 @@
 {
   "version": "2.0.0",
   "tasks": [
+    {
+      "label": "Dart: create build directory",
+			"type": "shell",
+			"presentation": {
+				"panel": "shared",
+				"reveal": "never"
+			},
+      "command": "mkdir",
+			"args": ["-p", "build"]
+		},
+		{
+      "label": "Dart: build",
+			"type": "shell",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"panel": "dedicated",
+				"reveal": "never"
+			},
+      "dependsOn": [
+        "Dart: create build directory"
+      ],
+      "command": "dart",
+			"args": ["compile", "exe", "bin/papyrus_parser.dart", "-o", "build/papyrus-parser"]
+		}
   ]
 }

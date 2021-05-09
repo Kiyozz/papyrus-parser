@@ -2074,6 +2074,5 @@ void main() {
     },
   );
 
-  // TODO: review start/end of nodes
-  // TODO: process line/column
+  // TODO: variableDeclaration.variable start not good
 }

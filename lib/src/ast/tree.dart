@@ -1,7 +1,7 @@
 import 'package:charcode/ascii.dart';
 import 'package:collection/collection.dart';
-import 'package:papyrus_parser/src/ast/position.dart';
 
+import 'position.dart';
 import 'exception.dart';
 import 'types.dart';
 import 'node.dart';
@@ -26,11 +26,22 @@ class Tree {
   final String? _filename;
   final String _content;
   final TreeOptions _options;
+  Position _startPos = Position(line: 0, character: 0);
+  Position _endPos = Position(line: 0, character: 0);
+
+  Position get _currentPos {
+    final meta = _numberOfLinesBetweenAt(0, to: _pos, updateState: false);
+
+    return meta.asPosition();
+
+    // return Position(line: _currentLine, character: _currentCharacter);
+  }
 
   /// The current position of the tokenizer in the _content
   int _pos = 0;
 
-  Position get _currentPos => Position.fromIndex(_pos, content: _content);
+  int _currentLine = 0;
+  int _currentCharacter = 0;
 
   /// Type of current token
   NodeType _type = NodeType.eof;
@@ -52,6 +63,12 @@ class Tree {
 
   /// Position information for the previous token
   int _lastTokenEnd = 0;
+
+  /// Position information for the previous token
+  Position _lastTokenStartPos = Position(line: 0, character: 0);
+
+  /// Position information for the previous token
+  Position _lastTokenEndPos = Position(line: 0, character: 0);
 
   /// Is parsing inside of FunctionStatement
   bool _isInFunction = false;
@@ -87,9 +104,13 @@ class Tree {
     required String content,
     TreeOptions options = const TreeOptions(),
     String? filename,
+    int start = 0,
+    Position startPos = const Position(line: 0, character: 0),
   })  : _content = content,
         _options = options,
-        _filename = filename;
+        _filename = filename,
+        _start = start,
+        _startPos = startPos;
 
   Program parse() {
     final program = _startNode().toProgram();
@@ -100,11 +121,11 @@ class Tree {
   }
 
   Node _startNode() {
-    return Node(start: _start, content: _content);
+    return Node(start: _start, startPos: _startPos);
   }
 
-  Node _startNodeAt(int pos) {
-    return Node(start: pos, content: _content);
+  Node _startNodeAt(int pos, Position startPos) {
+    return Node(start: pos, startPos: startPos);
   }
 
   Program _parseTopLevel(Program program) {
@@ -115,14 +136,12 @@ class Tree {
     }
 
     if (_options.throwScriptnameMissing && !program.hasScriptName) {
-      final position = Position.fromIndex(program.start, content: _content);
-
       throw ScriptNameException(
         message: 'ScriptName statement is not complete',
         start: program.start,
         end: program.start,
-        startPos: position,
-        endPos: position,
+        startPos: program.startPos,
+        endPos: program.startPos,
       );
     }
 
@@ -142,6 +161,8 @@ class Tree {
   void _goNext() {
     _lastTokenEnd = _end;
     _lastTokenStart = _start;
+    _lastTokenEndPos = _endPos;
+    _lastTokenStartPos = _startPos;
     _nextToken();
   }
 
@@ -171,7 +192,8 @@ class Tree {
       case NodeType.importKw:
         return _parseImport();
       default:
-        final startPos = _start;
+        final start = _start;
+        final startPos = _startPos;
 
         if (_type == NodeType.autoKw) {
           final autoType = _type;
@@ -181,6 +203,7 @@ class Tree {
           if (_type == NodeType.stateKw) {
             return _parseStateStatement(
               node.toStateStatement(),
+              start: start,
               startPos: startPos,
               flag: autoType,
             );
@@ -227,12 +250,11 @@ class Tree {
           _goNext();
 
           if (_type == NodeType.asKw) {
-            final identifier = _startNodeAt(startPos).toIdentifier();
+            final identifier = _startNodeAt(start, startPos).toIdentifier();
             identifier.name = potentialVariableType;
 
             return _parseCastExpression(
               node.toCastExpression(),
-              startPos: startPos,
               id: _finishNode(identifier),
             );
           }
@@ -240,7 +262,8 @@ class Tree {
           if (_type == NodeType.functionKw) {
             final functionNode = node.toFunctionStatement();
 
-            functionNode.start = startPos;
+            functionNode.start = start;
+            functionNode.startPos = startPos;
             functionNode.kind = potentialVariableType;
 
             return _parseFunctionStatement(functionNode);
@@ -250,20 +273,22 @@ class Tree {
             final id = node.toIdentifier();
             id.name = potentialVariableType;
 
-            return _parseSubscripts(id, startPos);
+            return _parseSubscripts(id, start, startPos);
           }
 
           if (_type == NodeType.propertyKw) {
             return _parsePropertyDeclaration(
               kind: potentialVariableType,
-              start: startPos,
+              start: start,
+              startPos: startPos,
             );
           }
 
           if (_type == NodeType.name) {
             return _parseVariableDeclaration(
               kind: potentialVariableType,
-              start: startPos,
+              start: start,
+              startPos: startPos,
               isArray: isArray,
             );
           }
@@ -296,8 +321,8 @@ class Tree {
             'Functions, States, or Events inside his BlockStatement',
         start: node.start,
         end: node.end,
-        startPos: Position.fromIndex(node.start, content: _content),
-        endPos: Position.fromIndex(node.end, content: _content),
+        startPos: node.startPos,
+        endPos: node.endPos,
       );
     }
 
@@ -314,7 +339,7 @@ class Tree {
         flag: _value,
         start: _start,
         end: _pos,
-        startPos: Position.fromIndex(_start, content: _content),
+        startPos: _startPos,
         endPos: _currentPos,
       );
     }
@@ -361,7 +386,8 @@ class Tree {
   Node _parseStateStatement(
     StateStatement node, {
     NodeType? flag,
-    int? startPos,
+    int? start,
+    Position? startPos,
   }) {
     if (_isInFunction || _isInEvent) {
       throw UnexpectedTokenException(
@@ -370,7 +396,7 @@ class Tree {
             'Functions, States, or Events inside his BlockStatement',
         start: node.start,
         end: _pos,
-        startPos: Position.fromIndex(node.start, content: _content),
+        startPos: node.startPos,
         endPos: _currentPos,
       );
     }
@@ -378,8 +404,12 @@ class Tree {
     _isInState = true;
     node.flag = flag == NodeType.autoKw ? StateFlag.auto : null;
 
+    if (node.isAuto && start != null) {
+      node.start = start;
+    }
+
     if (node.isAuto && startPos != null) {
-      node.start = startPos;
+      node.startPos = startPos;
     }
 
     _goNext();
@@ -392,8 +422,8 @@ class Tree {
         'StateStatement can only contains FunctionStatement or EventStatement',
         start: node.start,
         end: node.id.end,
-        startPos: Position.fromIndex(node.start, content: _content),
-        endPos: Position.fromIndex(node.id.end, content: _content),
+        startPos: node.startPos,
+        endPos: node.id.endPos,
       );
     }
 
@@ -404,7 +434,6 @@ class Tree {
 
   CastExpression _parseCastExpression(
     CastExpression node, {
-    required int startPos,
     required Node id,
   }) {
     final castNode = node.toCastExpression();
@@ -425,7 +454,7 @@ class Tree {
       throw UnexpectedTokenException(
         start: node.start,
         end: _pos,
-        startPos: Position.fromIndex(node.start, content: _content),
+        startPos: node.startPos,
         endPos: _currentPos,
         message: 'Return statement can only be used in Function',
       );
@@ -442,16 +471,17 @@ class Tree {
 
   Node _parsePropertyDeclaration({
     required int start,
+    required Position startPos,
     required String kind,
   }) {
-    var node = _startNodeAt(start).toPropertyDeclaration();
+    var node = _startNodeAt(start, startPos).toPropertyDeclaration();
 
     if (_isInFunctionContext) {
       throw PropertyException(
         'Cannot use a property inside of Function/Event',
         start: node.start,
         end: _pos,
-        startPos: Position.fromIndex(node.start, content: _content),
+        startPos: node.startPos,
         endPos: _currentPos,
       );
     }
@@ -486,7 +516,7 @@ class Tree {
           'A Conditional Property must appears in ScriptName flagged Conditional',
           start: node.start,
           end: _pos,
-          startPos: Position.fromIndex(node.start, content: _content),
+          startPos: node.startPos,
           endPos: _currentPos,
         );
       }
@@ -503,7 +533,7 @@ class Tree {
         'A AutoReadOnly should have a constant init declaration',
         start: node.start,
         end: _pos,
-        startPos: Position.fromIndex(node.start, content: _content),
+        startPos: node.startPos,
         endPos: _currentPos,
       );
     }
@@ -513,7 +543,7 @@ class Tree {
         'A Conditional Property must be Auto or AutoReadOnly',
         start: node.start,
         end: _pos,
-        startPos: Position.fromIndex(node.start, content: _content),
+        startPos: node.startPos,
         endPos: _currentPos,
       );
     }
@@ -523,7 +553,7 @@ class Tree {
         'A Conditional Property must have an constant init declaration',
         start: node.start,
         end: _pos,
-        startPos: Position.fromIndex(node.start, content: _content),
+        startPos: node.startPos,
         endPos: _currentPos,
       );
     }
@@ -536,7 +566,7 @@ class Tree {
           'Missing Hidden flag for Full Property "$name"',
           start: node.start,
           end: _pos,
-          startPos: Position.fromIndex(node.start, content: _content),
+          startPos: node.startPos,
           endPos: _currentPos,
         );
       }
@@ -550,7 +580,7 @@ class Tree {
           'Missing "EndProperty" for "$name" Property',
           start: node.start,
           end: _pos,
-          startPos: Position.fromIndex(node.start, content: _content),
+          startPos: node.startPos,
           endPos: _currentPos,
         );
       }
@@ -567,7 +597,7 @@ class Tree {
           'A full property must have a getter and/or a setter',
           start: node.start,
           end: _pos,
-          startPos: Position.fromIndex(node.start, content: _content),
+          startPos: node.startPos,
           endPos: _currentPos,
         );
       }
@@ -585,7 +615,7 @@ class Tree {
             'Setter should have one parameter with the same type as the Property',
             start: node.start,
             end: _pos,
-            startPos: Position.fromIndex(node.start, content: _content),
+            startPos: node.startPos,
             endPos: _currentPos,
           );
         }
@@ -599,7 +629,7 @@ class Tree {
             'Getter should return the same type as the Property',
             start: node.start,
             end: _pos,
-            startPos: Position.fromIndex(node.start, content: _content),
+            startPos: node.startPos,
             endPos: _currentPos,
           );
         }
@@ -609,7 +639,7 @@ class Tree {
             'Property getter cannot have parameters',
             start: getter.start,
             end: _pos,
-            startPos: Position.fromIndex(getter.start, content: _content),
+            startPos: getter.startPos,
             endPos: _currentPos,
           );
         }
@@ -638,28 +668,33 @@ class Tree {
       throw UnexpectedTokenException(
         start: node.start,
         end: _pos,
-        startPos: Position.fromIndex(node.start, content: _content),
+        startPos: node.startPos,
         endPos: _currentPos,
       );
     }
 
+    final startPos = _startPos;
+    final start = _start;
     node.id = _parseIdentifier();
 
     final filename = _filename;
     if (_options.throwScriptnameMismatch && filename != null) {
       if (node.id.name.toLowerCase() != filename.toLowerCase()) {
         throw ScriptNameException(
-          start: node.start,
-          end: _pos,
-          startPos: Position.fromIndex(node.start, content: _content),
-          endPos: _currentPos,
-          message:
-              'ScriptNameStatement Identifier must be the same as the filename ($filename)',
+          start: start,
+          end: start,
+          startPos: startPos,
+          endPos: startPos,
+          message: 'ScriptNameStatement Identifier must be the same '
+              'as the filename ($filename)',
         );
       }
     }
 
-    node.extendsDeclaration = _parseExtends(startPos: node.start);
+    node.extendsDeclaration = _parseExtends(
+      start: node.start,
+      startPos: node.startPos,
+    );
     node.flags = _parseScriptNameFlags();
 
     final scriptName = _finishNode(node);
@@ -688,7 +723,10 @@ class Tree {
     return flags;
   }
 
-  ExtendsDeclaration? _parseExtends({required int startPos}) {
+  ExtendsDeclaration? _parseExtends({
+    required int start,
+    required Position startPos,
+  }) {
     if (_type != NodeType.extendsKw) return null;
 
     final node = _startNode().toExtendsDeclaration();
@@ -697,10 +735,10 @@ class Tree {
     if (_hasNewLineBetweenLastToken()) {
       throw ScriptNameException(
         message: 'ScriptName statement is not complete',
-        start: startPos,
+        start: start,
         end: node.meta.end,
-        startPos: Position.fromIndex(startPos, content: _content),
-        endPos: Position.fromIndex(node.meta.end, content: _content),
+        startPos: startPos,
+        endPos: node.meta.endPos,
       );
     }
 
@@ -711,13 +749,16 @@ class Tree {
 
   VariableDeclaration _parseVariableDeclaration({
     required int start,
+    required Position startPos,
     required String kind,
     required bool isArray,
   }) {
-    final node = _startNodeAt(start).toVariableDeclaration();
-    final variable = _startNodeAt(start).toVariable();
+    final node = _startNodeAt(start, startPos).toVariableDeclaration();
+    final variable = _startNodeAt(start, startPos).toVariable();
 
     variable.id = _parseIdentifier();
+    variable.start = variable.id.start;
+    variable.startPos = variable.id.startPos;
     variable.kind = kind;
     variable.isArray = isArray;
 
@@ -728,7 +769,7 @@ class Tree {
         message: 'Cannot find variable name',
         start: variable.start,
         end: _pos,
-        startPos: Position.fromIndex(variable.start, content: _content),
+        startPos: variable.startPos,
         endPos: _currentPos,
       );
     }
@@ -753,7 +794,7 @@ class Tree {
         message: 'Cannot use WhileStatement outside of a Function/Event',
         start: node.start,
         end: _pos,
-        startPos: Position.fromIndex(node.start, content: _content),
+        startPos: node.startPos,
         endPos: _currentPos,
       );
     }
@@ -774,7 +815,7 @@ class Tree {
         message: 'Cannot use IfStatement outside of a Function/Event',
         start: node.start,
         end: _pos,
-        startPos: Position.fromIndex(node.start, content: _content),
+        startPos: node.startPos,
         endPos: _currentPos,
       );
     }
@@ -812,8 +853,8 @@ class Tree {
             'inside his BlockStatement',
         start: node.start,
         end: node.end,
-        startPos: Position.fromIndex(node.start, content: _content),
-        endPos: Position.fromIndex(node.end, content: _content),
+        startPos: node.startPos,
+        endPos: node.endPos,
       );
     }
 
@@ -847,7 +888,7 @@ class Tree {
         flag: _value,
         start: _start,
         end: _pos,
-        startPos: Position.fromIndex(_start, content: _content),
+        startPos: _startPos,
         endPos: _currentPos,
       );
     }
@@ -915,7 +956,7 @@ class Tree {
         'Missing "$missingTypes"',
         start: node.start,
         end: _pos,
-        startPos: Position.fromIndex(node.start, content: _content),
+        startPos: node.startPos,
         endPos: _currentPos,
       );
     }
@@ -942,14 +983,15 @@ class Tree {
   }
 
   VariableDeclaration _parseFunctionParamMaybeDefault(
-    int startPos,
+    int start,
+    Position startPos, [
     Node? left,
-  ) {
+  ]) {
     if (_type != NodeType.name) {
       throw UnexpectedTokenException(
-        start: startPos,
+        start: start,
         end: _pos,
-        startPos: Position.fromIndex(startPos, content: _content),
+        startPos: startPos,
         endPos: _currentPos,
       );
     }
@@ -972,7 +1014,8 @@ class Tree {
 
     return _parseVariableDeclaration(
       kind: paramKind,
-      start: startPos,
+      start: start,
+      startPos: startPos,
       isArray: isArray,
     );
   }
@@ -1018,7 +1061,7 @@ class Tree {
     return _parseExprSubscripts();
   }
 
-  Node _parseExprOp(Node left, int leftStartPos) {
+  Node _parseExprOp(Node left, int leftStart) {
     if (_type == NodeType.logicalOr ||
         _type == NodeType.logicalAnd ||
         _type == NodeType.binary ||
@@ -1045,33 +1088,36 @@ class Tree {
 
       final op = _value;
       _goNext();
-      final startPos = _start;
-      final right = _parseExprOp(_parseMaybeUnary(), startPos);
+      final start = _start;
+      final startPos = _startPos;
+      final right = _parseExprOp(_parseMaybeUnary(), start);
       final node = _buildBinary(
-        leftStartPos,
-        left,
-        right,
-        op,
+        start: leftStart,
+        startPos: startPos,
+        left: left,
+        right: right,
+        operator: op,
         logical: isLogical,
       );
 
-      return _parseExprOp(node, leftStartPos);
+      return _parseExprOp(node, leftStart);
     }
 
     return left;
   }
 
-  BinaryExpression _buildBinary(
-    int startPos,
-    Node left,
-    Node right,
-    String op, {
+  BinaryExpression _buildBinary({
+    required int start,
+    required Position startPos,
+    required Node left,
+    required Node right,
+    required String operator,
     bool logical = false,
   }) {
-    final node = _startNodeAt(startPos).toBinaryExpression();
+    final node = _startNodeAt(start, startPos).toBinaryExpression();
 
     node.left = left;
-    node.operator = op;
+    node.operator = operator;
     node.right = right;
 
     return _finishNode(
@@ -1081,10 +1127,11 @@ class Tree {
   }
 
   Node _parseExprSubscripts() {
-    final startPos = _start;
+    final start = _start;
+    final startPos = _startPos;
     final expr = _parseExprAtom();
 
-    return _parseSubscripts(expr, startPos);
+    return _parseSubscripts(expr, start, startPos);
   }
 
   Node _parseExprAtom() {
@@ -1099,7 +1146,7 @@ class Tree {
             'Parent cannot be used as a function',
             start: parentNode.start,
             end: _pos,
-            startPos: Position.fromIndex(parentNode.start, content: _content),
+            startPos: parentNode.startPos,
             endPos: _currentPos,
           );
         }
@@ -1142,8 +1189,12 @@ class Tree {
       case NodeType.newKw:
         return _parseNewExpression();
       default:
-        // TODO: unexpected I think
-        throw Exception();
+        throw UnexpectedTokenException(
+          start: _pos,
+          end: _pos,
+          startPos: _currentPos,
+          endPos: _currentPos,
+        );
     }
   }
 
@@ -1160,13 +1211,11 @@ class Tree {
     _expect(NodeType.parenR);
 
     if (expr == null) {
-      final position = Position.fromIndex(_start, content: _content);
-
       throw UnexpectedTokenException(
         start: _lastTokenEnd,
         end: _lastTokenEnd,
-        startPos: position,
-        endPos: position,
+        startPos: _startPos,
+        endPos: _startPos,
       );
     }
 
@@ -1212,7 +1261,7 @@ class Tree {
         message: 'Cannot create arrays outside of Function/Event',
         start: node.start,
         end: _pos,
-        startPos: Position.fromIndex(node.start, content: _content),
+        startPos: node.startPos,
         endPos: _currentPos,
       );
     }
@@ -1225,8 +1274,8 @@ class Tree {
       throw UnexpectedTokenException(
         start: argument.start,
         end: argument.end,
-        startPos: Position.fromIndex(argument.start, content: _content),
-        endPos: Position.fromIndex(argument.end, content: _content),
+        startPos: argument.startPos,
+        endPos: argument.endPos,
       );
     }
 
@@ -1236,17 +1285,17 @@ class Tree {
             'NewExpression array size must be an Int Literal. Got ${argument.property.runtimeType}',
         start: argument.start,
         end: argument.end,
-        startPos: Position.fromIndex(argument.start, content: _content),
-        endPos: Position.fromIndex(argument.end, content: _content),
+        startPos: argument.startPos,
+        endPos: argument.endPos,
       );
     }
 
     return _finishNode(node);
   }
 
-  Node _parseSubscripts(Node base, int startPos) {
+  Node _parseSubscripts(Node base, int start, Position startPos) {
     while (true) {
-      final element = _parseSubscript(base, startPos);
+      final element = _parseSubscript(base, start, startPos);
 
       if (element == base) return element;
 
@@ -1254,7 +1303,7 @@ class Tree {
     }
   }
 
-  Node _parseSubscript(Node base, int startPos) {
+  Node _parseSubscript(Node base, int start, Position startPos) {
     final computed = _eat(NodeType.bracketL);
 
     if (computed || _eat(NodeType.dot)) {
@@ -1266,7 +1315,7 @@ class Tree {
             'Cannot use Parent in ScriptName that do not extends Object',
             start: base.start,
             end: _pos,
-            startPos: Position.fromIndex(base.start, content: _content),
+            startPos: base.startPos,
             endPos: _currentPos,
           );
         }
@@ -1281,12 +1330,12 @@ class Tree {
           'Property ${object.name} cannot be used as a MemberExpression',
           start: base.start,
           end: _pos,
-          startPos: Position.fromIndex(base.start, content: _content),
+          startPos: base.startPos,
           endPos: _currentPos,
         );
       }
 
-      final node = _startNodeAt(startPos).toMemberExpression();
+      final node = _startNodeAt(start, startPos).toMemberExpression();
       node.object = base;
 
       if (computed) {
@@ -1303,16 +1352,16 @@ class Tree {
       if (_options.throwCallOutside && !_isInFunctionContext) {
         throw UnexpectedTokenException(
           message: 'Cannot call a Function outside of a Function/Event',
-          start: startPos,
+          start: start,
           end: _pos,
-          startPos: Position.fromIndex(startPos, content: _content),
+          startPos: startPos,
           endPos: _currentPos,
         );
       }
 
       final exprList = _parseExprList(close: NodeType.parenR);
 
-      final exprNode = _startNodeAt(startPos).toCallExpression();
+      final exprNode = _startNodeAt(start, startPos).toCallExpression();
       exprNode.callee = _finishNode(base);
       exprNode.arguments = exprList;
 
@@ -1321,18 +1370,17 @@ class Tree {
       if (_options.throwCastOutside && !_isInFunctionContext) {
         throw UnexpectedTokenException(
           message: 'Cannot use CastExpression outside of Function/Event',
-          start: startPos,
+          start: start,
           end: _pos,
-          startPos: Position.fromIndex(startPos, content: _content),
+          startPos: startPos,
           endPos: _currentPos,
         );
       }
 
-      final castNode = _startNodeAt(startPos).toCastExpression();
+      final castNode = _startNodeAt(start, startPos).toCastExpression();
 
       base = _parseCastExpression(
         castNode,
-        startPos: startPos,
         id: _finishNode(base),
       );
     }
@@ -1384,7 +1432,7 @@ class Tree {
         _expect(NodeType.comma);
       }
 
-      final elem = _parseFunctionParamMaybeDefault(_start, null);
+      final elem = _parseFunctionParamMaybeDefault(_start, _startPos);
 
       elements.add(elem);
     }
@@ -1435,8 +1483,10 @@ class Tree {
   }
 
   void _nextToken() {
-    _pos = _skipSpace();
+    final newPos = _skipSpace();
+    _pos = newPos;
     _start = _pos;
+    _startPos = _currentPos;
 
     if (_pos >= _content.length) return _finishToken(NodeType.eof);
 
@@ -1444,7 +1494,7 @@ class Tree {
 
     if (code == null) return;
 
-    return _readToken(code);
+    _readToken(code);
   }
 
   void _readToken(int code) {
@@ -1457,16 +1507,23 @@ class Tree {
           .where((code) => code == $backslash);
 
       if (backslashes.length > 1) {
-        final posFirstBackslash =
-            _content.codeUnits.indexOf($backslash, _lastTokenEnd);
+        final posFirstBackslash = _content.codeUnits.indexOf(
+          $backslash,
+          _lastTokenEnd,
+        );
+        final position = _numberOfLinesBetweenAt(
+          posFirstBackslash,
+          to: _end,
+          updateState: false,
+        );
 
         throw UnexpectedTokenException(
           message: 'Unexpected token. '
               'Expected a new line after a LineTerminator',
           start: posFirstBackslash,
           end: _end,
-          startPos: Position.fromIndex(posFirstBackslash, content: _content),
-          endPos: Position.fromIndex(_end, content: _content),
+          startPos: position.asPosition(),
+          endPos: _endPos,
         );
       }
 
@@ -1482,7 +1539,7 @@ class Tree {
         message: 'ScriptName statement is not complete',
         start: _start,
         end: _pos,
-        startPos: Position.fromIndex(_start, content: _content),
+        startPos: _startPos,
         endPos: _currentPos,
       );
     }
@@ -1492,6 +1549,7 @@ class Tree {
 
   void _finishToken(NodeType type, {dynamic? val}) {
     _end = _pos;
+    _endPos = _currentPos;
     final prevType = _type;
     _type = type;
     _value = val;
@@ -1504,6 +1562,7 @@ class Tree {
 
     node.type = type ?? node.type;
     node.end = usedPos;
+    node.endPos = _lastTokenEndPos;
 
     _context.addNode(node);
 
@@ -1543,7 +1602,7 @@ class Tree {
         message: 'ScriptName statement is not complete',
         start: _start,
         end: _pos,
-        startPos: Position.fromIndex(_start, content: _content),
+        startPos: _startPos,
         endPos: _currentPos,
       );
     }
@@ -1686,7 +1745,9 @@ class Tree {
           break;
         case $semicolon:
           if (next == $slash) {
-            final newPos = _skipBlockComment(pos: pos);
+            final newPos = _skipBlockComment(
+              pos: pos,
+            );
 
             pos = newPos;
           } else {
@@ -1724,16 +1785,23 @@ class Tree {
   }
 
   int _skipDocComment({required int pos}) {
-    final startPos = pos;
+    final start = pos;
     final end = _content.indexOf(r'}', pos += 1);
 
     if (end == -1) {
+      final position = _numberOfLinesBetweenAt(
+        start,
+        to: end,
+        updateState: false,
+      );
+
       throw UnexpectedTokenException(
-          message: 'Doc comment is not closed',
-          start: startPos,
-          end: _pos,
-          startPos: Position.fromIndex(startPos, content: _content),
-          endPos: _currentPos);
+        message: 'Doc comment is not closed',
+        start: start,
+        end: _pos,
+        startPos: position.asPosition(),
+        endPos: _currentPos,
+      );
     }
 
     pos = end + 1;
@@ -1742,15 +1810,21 @@ class Tree {
   }
 
   int _skipBlockComment({required int pos}) {
-    final startPos = pos;
+    final start = pos;
     final end = _content.indexOf('/;', pos += 2);
 
     if (end == -1) {
+      final position = _numberOfLinesBetweenAt(
+        start,
+        to: end,
+        updateState: false,
+      );
+
       throw UnexpectedTokenException(
         message: 'Block comment is not closed',
-        start: startPos,
+        start: start,
         end: _pos,
-        startPos: Position.fromIndex(startPos, content: _content),
+        startPos: position.asPosition(),
         endPos: _currentPos,
       );
     }
@@ -1951,6 +2025,7 @@ class Tree {
   String _readString(int code) {
     var out = '';
     var chunkStart = ++_pos;
+    var chunkStartPos = _currentPos;
 
     while (true) {
       if (_pos >= _content.length) {
@@ -1958,7 +2033,7 @@ class Tree {
           message: 'String is not closed',
           start: chunkStart,
           end: _pos,
-          startPos: Position.fromIndex(chunkStart, content: _content),
+          startPos: chunkStartPos,
           endPos: _currentPos,
         );
       }
@@ -1998,6 +2073,7 @@ class Tree {
   String _readChar(int code) {
     var out = '';
     var chunkStart = ++_pos;
+    var chunkStartPos = _currentPos;
 
     while (true) {
       if (_pos >= _content.length) {
@@ -2005,7 +2081,7 @@ class Tree {
           message: 'Unexpected Identifier',
           start: chunkStart,
           end: _pos,
-          startPos: Position.fromIndex(chunkStart, content: _content),
+          startPos: chunkStartPos,
           endPos: _currentPos,
         );
       }
@@ -2137,11 +2213,10 @@ class Tree {
   }
 
   bool _hasNewLineBetweenLastToken() {
-    final contentBetweenExtendsAndNextToken =
-        _content.substring(_lastTokenEnd, _end);
+    final contentLastToken = _content.substring(_lastTokenEnd, _end);
+    final units = contentLastToken.codeUnits;
 
-    return contentBetweenExtendsAndNextToken.codeUnits.contains($lf) ||
-        contentBetweenExtendsAndNextToken.codeUnits.contains($cr);
+    return units.contains($lf) || units.contains($cr);
   }
 
   NodeType _close(NodeType type) {
@@ -2165,5 +2240,30 @@ class Tree {
 
         throw Exception();
     }
+  }
+
+  PositionInformation _numberOfLinesBetweenAt(
+    int from, {
+    required int to,
+    bool updateState = true,
+  }) {
+    var line = _currentLine;
+    var char = _currentCharacter;
+
+    for (var i = from; i < to; i++) {
+      if (_content.codeUnitAt(i) == $lf) {
+        line++;
+        char = 0;
+      } else {
+        char++;
+      }
+    }
+
+    if (updateState) {
+      _currentLine = line;
+      _currentCharacter = char;
+    }
+
+    return PositionInformation(line: line, character: char);
   }
 }

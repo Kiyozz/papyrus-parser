@@ -11,11 +11,19 @@
       "program": "./test/"
     },
     {
-      "name": "Dart: Run",
+      "name": "Dart: papyrus_parser",
       "request": "launch",
       "type": "dart",
       "program": "./bin/papyrus_parser.dart",
       "args": ["file", "var/test.psc", "test"]
+    },
+    {
+      "name": "Dart: papyrus_linter",
+      "request": "launch",
+      "type": "dart",
+      "program": "./bin/papyrus_linter.dart",
+      "args": ["-f", "test"],
+      "console": "terminal"
     }
   ]
 }

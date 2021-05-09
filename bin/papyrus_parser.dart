@@ -10,10 +10,13 @@ void createProgram({required String content, required String filename}) {
   try {
     final program = tree.parse();
     final json = program.toJson();
-    print(jsonEncoder.convert({
-      'isException': false,
-      ...json,
-    }));
+    stdout.write(
+      jsonEncoder.convert({
+        'isException': false,
+        ...json,
+      }),
+    );
+    exit(0);
   } on NodeException catch (e) {
     final display = {
       'start': e.startPos.toJson(),
@@ -23,6 +26,7 @@ void createProgram({required String content, required String filename}) {
       'isException': true,
     };
     print(jsonEncoder.convert(display));
+    exit(0);
   }
 }
 
@@ -45,8 +49,6 @@ void main(List<String> arguments) async {
     createProgram(content: await file.readAsString(), filename: arguments[2]);
   } else {
     var content = '';
-
-    print('r ${arguments.join(', ')}');
 
     final subcription = stdin
         .transform(utf8.decoder)

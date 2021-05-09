@@ -1,4 +1,4 @@
-import 'package:papyrus_parser/src/ast/position.dart';
+import 'position.dart';
 
 abstract class NodeException {
   final int start;
