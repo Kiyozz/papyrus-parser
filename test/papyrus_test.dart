@@ -1,4 +1,4 @@
-import 'package:papyrus_parser/papyrus_parser.dart';
+import 'package:papyrus/ast.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -6,11 +6,11 @@ void main() {
     test(
       'should have a name, Extends a script, and have Hidden and Conditional flags',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'ScriptName Test Extends Form Hidden Conditional',
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body.isNotEmpty, isTrue);
         final scriptName = program.body.first as ScriptNameStatement;
         expect(scriptName.type, equals(NodeType.scriptNameKw));
@@ -27,11 +27,11 @@ void main() {
     test(
       'should have a name and Hidden flag',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'ScriptName Test Hidden',
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body.isNotEmpty, isTrue);
         final scriptName = program.body.first as ScriptNameStatement;
         expect(scriptName.type, equals(NodeType.scriptNameKw));
@@ -43,32 +43,35 @@ void main() {
     test(
       'without ScriptNameStatement should throws an error',
       () {
-        final tree = Tree(content: 'function toto()\nendfunction');
+        final parser = Parser(content: 'function toto()\nendfunction');
 
-        expect(() => tree.parse(), throwsA(TypeMatcher<ScriptNameException>()));
+        expect(
+            () => parser.parse(), throwsA(TypeMatcher<ScriptNameException>()));
       },
     );
 
     test(
       'not the same as the filename should throws an error',
       () {
-        final tree = Tree(content: 'ScriptName notTest', filename: 'Test');
+        final parser = Parser(content: 'ScriptName notTest', filename: 'Test');
 
-        expect(() => tree.parse(), throwsA(TypeMatcher<ScriptNameException>()));
+        expect(
+            () => parser.parse(), throwsA(TypeMatcher<ScriptNameException>()));
       },
     );
 
     test(
       'that appears more than once should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'ScriptName test\nScriptName toto',
-          options: const TreeOptions(
+          options: const ParserOptions(
             throwScriptnameMismatch: false,
           ),
         );
 
-        expect(() => tree.parse(), throwsA(TypeMatcher<ScriptNameException>()));
+        expect(
+            () => parser.parse(), throwsA(TypeMatcher<ScriptNameException>()));
       },
     );
   });
@@ -77,13 +80,13 @@ void main() {
     test(
       'should have a name and no arguments',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function toto()\n'
               'EndFunction',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final functionBody = program.body.first as FunctionStatement;
         expect(functionBody.id.name, equals('toto'));
@@ -96,13 +99,13 @@ void main() {
     test(
       'should have a name and one argument without an init declaration',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function toto(String n)\n'
               'EndFunction',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final body = program.body.first as FunctionStatement;
         expect(body.id.name, equals('toto'));
@@ -120,13 +123,13 @@ void main() {
     test(
       'should have a Array VariableDeclaration',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function toto(String[] n)\n'
               'EndFunction',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final functionBody = tree.parse().body.first as FunctionStatement;
+        final functionBody = parser.parse().body.first as FunctionStatement;
         expect(functionBody.id.name, equals('toto'));
         expect(functionBody.body, isNotNull);
         expect(functionBody.type, equals(NodeType.functionKw));
@@ -142,13 +145,13 @@ void main() {
     test(
       'should have a name, two arguments, one with an init declaration',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function toto(String v, String n = "")\n'
               'EndFunction',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final body = program.body.first as FunctionStatement;
         final param = body.params[1];
@@ -163,13 +166,13 @@ void main() {
     test(
       'without EndFunction should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function toto(String n = "")\n',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<BlockStatementException>()),
         );
       },
@@ -178,14 +181,14 @@ void main() {
     test(
       'with parenthesis before the identifier should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function (toto)(String n = "")\n'
               'EndFunction',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<UnexpectedTokenException>()),
         );
       },
@@ -194,14 +197,14 @@ void main() {
     test(
       'without parenthesis should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function toto\n'
               'EndFunction',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<UnexpectedTokenException>()),
         );
       },
@@ -210,12 +213,12 @@ void main() {
     test(
       'should have Global and Native flags',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function toto() Global Native',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final function = program.body.first as FunctionStatement;
         expect(function.flags, hasLength(2));
         final flags = function.flags;
@@ -229,13 +232,13 @@ void main() {
     test(
       'should have Global flag',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function toto() Global\n'
               'EndFunction',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final function = program.body.first as FunctionStatement;
         expect(function.flags, hasLength(1));
         final flags = function.flags;
@@ -247,14 +250,14 @@ void main() {
     test(
       'with an unknown flag should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function toto() unknownFlag\n'
               'EndFunction',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<FunctionFlagException>()),
         );
       },
@@ -263,13 +266,13 @@ void main() {
     test(
       'should have VariableDeclaration with init declaration in first parameter',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function toto(String n = "") global\n'
               'EndFunction',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final statement = tree.parse().body.first as FunctionStatement;
+        final statement = parser.parse().body.first as FunctionStatement;
         final variableDeclaration =
             statement.params.first as VariableDeclaration;
         final variable = variableDeclaration.variable;
@@ -280,14 +283,14 @@ void main() {
     test(
       'should have an MemberExpression',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function test()\n'
               '  Debug.Trace("[")\n'
               'EndFunction',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final statement = tree.parse().body.first as FunctionStatement;
+        final statement = parser.parse().body.first as FunctionStatement;
         final expression = statement.body?.body.first as ExpressionStatement;
         final call = expression.expression as CallExpression;
         final member = call.callee as MemberExpression;
@@ -303,18 +306,18 @@ void main() {
     test(
       'with an Function statement should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function test()\n'
               '  Function toto()\n'
               '  EndFunction'
               'EndFunction',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<UnexpectedTokenException>()),
         );
       },
@@ -323,18 +326,18 @@ void main() {
     test(
       'with an Event statement should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function test()\n'
               '  Event toto()\n'
               '  EndEvent'
               'EndFunction',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<UnexpectedTokenException>()),
         );
       },
@@ -343,20 +346,20 @@ void main() {
     test(
       'with an State statement should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function test()\n'
               '  State A\n'
               '    Event toto()\n'
               '    EndEvent'
               '  EndState'
               'EndFunction',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<UnexpectedTokenException>()),
         );
       },
@@ -367,12 +370,12 @@ void main() {
     test(
       'should not have an init declaration, kind "String"',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'String val',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final variableDeclaration = program.body.first as VariableDeclaration;
         final variable = variableDeclaration.variable;
@@ -385,12 +388,12 @@ void main() {
     test(
       'should not have an init declaration, kind "String[]", isArray',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'String[] val',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final variableDeclaration = program.body.first as VariableDeclaration;
         final variable = variableDeclaration.variable;
         expect(variable.init, isNull);
@@ -403,12 +406,12 @@ void main() {
     test(
       'should have an init Literal declaration',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'String val = ""',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final variableDeclaration = program.body.first as VariableDeclaration;
         final variable = variableDeclaration.variable;
@@ -422,16 +425,16 @@ void main() {
     test(
       'should have an init BinaryExpression declaration',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Bool val = ShouldStay() == false',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwBinaryOutside: false,
             throwCallOutside: false,
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final variableDeclaration = program.body.first as VariableDeclaration;
         final variable = variableDeclaration.variable;
@@ -447,16 +450,16 @@ void main() {
     test(
       'should have a CastExpression that have one CallExpression and one Identifier',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'String t = toto() as String',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwCastOutside: false,
             throwCallOutside: false,
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final variableDeclaration = program.body.first as VariableDeclaration;
         final variable = variableDeclaration.variable;
         final cast = variable.init as CastExpression;
@@ -471,13 +474,13 @@ void main() {
     test(
       'should have an MemberExpression as init declaration',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'String f = toto.init.toto',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
         final variableDeclaration =
-            tree.parse().body.first as VariableDeclaration;
+            parser.parse().body.first as VariableDeclaration;
         final variable = variableDeclaration.variable;
         expect(variable.init, TypeMatcher<MemberExpression>());
       },
@@ -488,12 +491,12 @@ void main() {
     test(
       'should have a type, a name, and Auto flag',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Int Property test Auto',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final property = program.body.first as PropertyDeclaration;
         expect(property.flags, hasLength(1));
@@ -506,13 +509,14 @@ void main() {
     test(
       'should have a type, a name, an constant init declaration and AutoReadOnly flag',
       () {
-        final tree = Tree(
-          content: 'Int Property test = 1 AutoReadOnly',
-          options: TreeOptions(throwScriptnameMissing: false),
+        final parser = Parser(
+          content: 'Int Property test = 1 AutoReadOnly\n'
+              'Function test()\n'
+              'EndFunction',
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
-        expect(program.body, hasLength(1));
+        final program = parser.parse();
         final property = program.body.first as PropertyDeclaration;
         expect(property.flags, hasLength(1));
         expect(property.flags.first.flag, equals(PropertyFlag.autoReadonly));
@@ -526,17 +530,17 @@ void main() {
     test(
       'Full should have a type, a name, a setter, and a getter',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Int Property test = 1 Hidden\n'
               '  Int Function Get()\n'
               '  EndFunction\n'
               '  Function Set(Int value)\n'
               '  EndFunction\n'
               'EndProperty',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final property = program.body.first as PropertyFullDeclaration;
         expect(property.flags, hasLength(1));
@@ -552,73 +556,73 @@ void main() {
     test(
       'Full without Hidden flag should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Int Property test = 1\n'
               '  int Function Get()\n'
               '    Return 2\n'
               '  Function\n'
               'EndProperty',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
+        expect(() => parser.parse(), throwsA(TypeMatcher<PropertyException>()));
       },
     );
 
     test(
       'Conditional in ScriptName not Conditional should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'ScriptName Test\n'
               'Int Property test = 1 Auto Conditional\n'
               'Function t()\n'
               'EndFunction',
-          options: TreeOptions(),
+          options: ParserOptions(),
         );
 
-        expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
+        expect(() => parser.parse(), throwsA(TypeMatcher<PropertyException>()));
       },
     );
 
     test(
       'Full without getter and setter should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Int Property test = 1 Hidden\n'
               'EndProperty',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
+        expect(() => parser.parse(), throwsA(TypeMatcher<PropertyException>()));
       },
     );
 
     test(
       'Full without End should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Int Property test = 1 Hidden\n'
               '  Int Function Get()\n'
               '  EndFunction',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
+        expect(() => parser.parse(), throwsA(TypeMatcher<PropertyException>()));
       },
     );
 
     test(
       'Full Setter without params should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Int Property test = 1 Hidden\n'
               '  Function Set()\n'
               '  EndFunction\n'
               'EndProperty',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
+        expect(() => parser.parse(), throwsA(TypeMatcher<PropertyException>()));
       },
     );
 
@@ -626,64 +630,64 @@ void main() {
       'Full Setter with a param not matching property type'
       ' should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Int Property test = 1 Hidden\n'
               '  Function Set(String n)\n'
               '  EndFunction\n'
               'EndProperty',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
+        expect(() => parser.parse(), throwsA(TypeMatcher<PropertyException>()));
       },
     );
 
     test(
       'AutoReadOnly without an init declaration should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Int Property test AutoReadOnly\n',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
+        expect(() => parser.parse(), throwsA(TypeMatcher<PropertyException>()));
       },
     );
 
     test(
       'Conditional without an Auto or AutoReadOnly flag should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Int Property test Conditional\n',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
+        expect(() => parser.parse(), throwsA(TypeMatcher<PropertyException>()));
       },
     );
 
     test(
       'Auto Conditional without an init declaration should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Int Property test Auto Conditional\n',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        expect(() => tree.parse(), throwsA(TypeMatcher<PropertyException>()));
+        expect(() => parser.parse(), throwsA(TypeMatcher<PropertyException>()));
       },
     );
 
     test(
       'Conditional not in a Conditional ScriptName should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'ScriptName Test\n\n'
               'Int Property test Auto Conditional',
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<PropertyException>()),
         );
       },
@@ -692,17 +696,17 @@ void main() {
     test(
       'used inside a Function/Event Statement should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function test()\n'
               '  Int Property test Auto\n'
               'EndFunction',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<PropertyException>()),
         );
       },
@@ -713,14 +717,14 @@ void main() {
     test(
       'argument should be a Literal',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function test()\n'
               '  Return true\n'
               'EndFunction',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final block =
             (program.body.first as FunctionStatement).body as BlockStatement;
@@ -734,14 +738,14 @@ void main() {
     test(
       'argument should be empty',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function test()\n'
               '  Return\n'
               'EndFunction',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final block =
             (program.body.first as FunctionStatement).body as BlockStatement;
@@ -754,14 +758,14 @@ void main() {
     test(
       'argument should be a CallExpression',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function test()\n'
               '  Return shouldStay()\n'
               'EndFunction',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final block =
             (program.body.first as FunctionStatement).body as BlockStatement;
@@ -776,14 +780,14 @@ void main() {
     test(
       'argument should be a BinaryExpression with two CallExpression',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function test()\n'
               '  Return (shouldStay() && shouldStay())\n'
               'EndFunction',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final block =
             (program.body.first as FunctionStatement).body as BlockStatement;
@@ -802,16 +806,16 @@ void main() {
     test(
       'argument should have two BinaryExpression, "*", ">=", and MemberExpression',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Return (currentTime - lastTime) * 24 >= dt.  test',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwReturnOutside: false,
             throwBinaryOutside: false,
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final returnStatement = program.body.first as ReturnStatement;
         final argument = returnStatement.argument as BinaryExpression;
         expect(argument.operator, equals('*'));
@@ -830,31 +834,31 @@ void main() {
     );
 
     test('used outside of FunctionStatement should throws an error', () {
-      final tree = Tree(
+      final parser = Parser(
         content: 'Return true',
-        options: TreeOptions(
+        options: ParserOptions(
           throwScriptnameMissing: false,
         ),
       );
 
       expect(
-        () => tree.parse(),
+        () => parser.parse(),
         throwsA(TypeMatcher<UnexpectedTokenException>()),
       );
     });
 
     test('used inside of EventStatement should throws an error', () {
-      final tree = Tree(
+      final parser = Parser(
         content: 'Event t()\n'
             '  Return true\n'
             'EndEvent',
-        options: TreeOptions(
+        options: ParserOptions(
           throwScriptnameMissing: false,
         ),
       );
 
       expect(
-        () => tree.parse(),
+        () => parser.parse(),
         throwsA(TypeMatcher<UnexpectedTokenException>()),
       );
     });
@@ -864,16 +868,16 @@ void main() {
     test(
       'should have a Literal and no parenthesis',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'If true\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
         expect(ifStatement.test, TypeMatcher<Literal>());
@@ -885,16 +889,16 @@ void main() {
     test(
       'should have a Literal and parenthesis',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'If (true)\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
         expect(ifStatement.test, TypeMatcher<Literal>());
@@ -906,17 +910,17 @@ void main() {
     test(
       'should have a UnaryExpression Literal and parenthesis',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'If (!((((((true)))))))\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
             throwBinaryOutside: false,
           ),
         );
 
-        final ifStatement = tree.parse().body.first as IfStatement;
+        final ifStatement = parser.parse().body.first as IfStatement;
         final test = ifStatement.test as UnaryExpression;
         expect(test.argument, TypeMatcher<Literal>());
         expect(test.operator, equals('!'));
@@ -926,10 +930,10 @@ void main() {
     test(
       'should have a BinaryExpression with a CallExpression and a Literal, and parenthesis',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'If (shouldStay() == true)\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
             throwBinaryOutside: false,
@@ -937,7 +941,7 @@ void main() {
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
         final ifTest = ifStatement.test as BinaryExpression;
@@ -952,10 +956,10 @@ void main() {
     test(
       'should have a BinaryExpression with two CallExpression, and parenthesis',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'If (shouldStay() == shouldStay())\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
             throwCallOutside: false,
@@ -963,7 +967,7 @@ void main() {
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
         final ifTest = ifStatement.test as BinaryExpression;
@@ -978,10 +982,10 @@ void main() {
     test(
       'should have a BinaryExpression with two CallExpression, one with one parameter, and parenthesis',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'If (shouldStay(true) == shouldStay())\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
             throwCallOutside: false,
@@ -989,7 +993,7 @@ void main() {
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
         final ifTest = ifStatement.test as BinaryExpression;
@@ -1005,10 +1009,10 @@ void main() {
     test(
       'should have a BinaryExpression with two CallExpression, one with one param that is a CallExpression, and parenthesis',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'If (shouldStay(shouldStay()) == shouldStay())\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
             throwBinaryOutside: false,
@@ -1017,7 +1021,7 @@ void main() {
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
         final ifTest = ifStatement.test as BinaryExpression;
@@ -1034,17 +1038,17 @@ void main() {
     test(
       'should have two BinaryExpression, one ">=" and one "*" and parenthesis',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'If (currentTime - lastTime) * 24 >= dt.test\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
             throwBinaryOutside: false,
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final ifStatement = program.body.first as IfStatement;
         final ifTest = ifStatement.test as BinaryExpression;
         expect(ifTest.operator, equals('*'));
@@ -1065,12 +1069,12 @@ void main() {
     test(
       'should have a Literal, parenthesis, and a BlockStatement with two CallExpression',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'If (true)\n'
               '  ShouldStay()\n'
               '  ShouldStay()\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
             throwBinaryOutside: false,
@@ -1078,7 +1082,7 @@ void main() {
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
         expect(ifStatement.test, isNotNull);
@@ -1090,10 +1094,10 @@ void main() {
     test(
       'should have a CastExpression that have a CallExpression and an Identifier',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'If t() as String\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
             throwCastOutside: false,
@@ -1101,7 +1105,7 @@ void main() {
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final ifStatement = program.body.first as IfStatement;
         final test = ifStatement.test as CastExpression;
         final call = test.id as CallExpression;
@@ -1115,10 +1119,10 @@ void main() {
     test(
       'should have two CastExpression that have a CallExpression and an Identifier',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'If t() as String && a() as Int\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
             throwBinaryOutside: false,
@@ -1127,7 +1131,7 @@ void main() {
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final ifStatement = program.body.first as IfStatement;
         final test = ifStatement.test as BinaryExpression;
         expect(test.operator, equals('&&'));
@@ -1151,10 +1155,10 @@ void main() {
     test(
       'should have a CallExpression and an UnaryExpression',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'If t() == -1\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
             throwBinaryOutside: false,
@@ -1162,7 +1166,7 @@ void main() {
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final ifStatement = program.body.first as IfStatement;
         final test = ifStatement.test as BinaryExpression;
         expect(test.operator, equals('=='));
@@ -1182,17 +1186,17 @@ void main() {
     test(
       'should have an Else alternate statement',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'If true\n'
               'Else\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
           ),
         );
 
-        final ifStatement = tree.parse().body.first as IfStatement;
+        final ifStatement = parser.parse().body.first as IfStatement;
         final test = ifStatement.test as Literal;
         final consequent = ifStatement.consequent as BlockStatement;
         final alternate = ifStatement.alternate as BlockStatement;
@@ -1206,18 +1210,18 @@ void main() {
     test(
       'should have an alternate statement with a VariableDeclaration',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'If true\n'
               'Else\n'
               '  String v = ""\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
           ),
         );
 
-        final ifStatement = tree.parse().body.first as IfStatement;
+        final ifStatement = parser.parse().body.first as IfStatement;
         final test = ifStatement.test as Literal;
         final consequent = ifStatement.consequent as BlockStatement;
         final alternate = ifStatement.alternate as BlockStatement;
@@ -1231,19 +1235,19 @@ void main() {
     test(
       'should have an alternate statement with a ElseIf, Else statement',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'If true\n'
               'ElseIf false\n'
               '  String v = ""'
               'Else\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
           ),
         );
 
-        final ifStatement = tree.parse().body.first as IfStatement;
+        final ifStatement = parser.parse().body.first as IfStatement;
         final test = ifStatement.test as Literal;
         final elseIfStatement = ifStatement.alternate as IfStatement;
         final elseIfTest = elseIfStatement.test as Literal;
@@ -1260,7 +1264,7 @@ void main() {
     test(
       'should have multiple alternate statement ElseIf, Else',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'If true\n'
               'ElseIf false\n'
               '  String v = ""'
@@ -1272,13 +1276,13 @@ void main() {
               '  String v = ""'
               'Else\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
           ),
         );
 
-        final ifStatement = tree.parse().body.first as IfStatement;
+        final ifStatement = parser.parse().body.first as IfStatement;
         final test = ifStatement.test as Literal;
 
         expect(test.value, isTrue);
@@ -1300,15 +1304,15 @@ void main() {
     test(
       'should have a Literal positional param and an optional AssignExpression param',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'shouldAssign(false, t = true)',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwCallOutside: false,
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final call = program.body.first as CallExpression;
         expect(call.arguments, hasLength(2));
         final callee = call.callee as Identifier;
@@ -1328,15 +1332,15 @@ void main() {
     test(
       'should have two Identifiers',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'toto as String',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwCastOutside: false,
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final cast = program.body.first as CastExpression;
         final id = cast.id as Identifier;
         expect(id.name, equals('toto'));
@@ -1348,16 +1352,16 @@ void main() {
     test(
       'should have multiple BinaryExpression',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Float t = (chance * (1 - health / 100)) as Float',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwCastOutside: false,
             throwBinaryOutside: false,
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final variable = (program.body.first as VariableDeclaration).variable;
         final cast = variable.init as CastExpression;
         final firstBinary = cast.id as BinaryExpression;
@@ -1377,16 +1381,16 @@ void main() {
     test(
       'should have one CallExpression and one Identifier',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'toto() as String',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwCastOutside: false,
             throwCallOutside: false,
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final cast = program.body.first as CastExpression;
         final call = cast.id as CallExpression;
         final callee = call.callee as Identifier;
@@ -1401,12 +1405,12 @@ void main() {
     test(
       'hex should be parsed',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Int t = 0x0033FF',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
 
         final variableDeclaration = program.body.first as VariableDeclaration;
         final variable = variableDeclaration.variable;
@@ -1420,12 +1424,12 @@ void main() {
     test(
       'int negative should be parsed',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Int t = -1',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
 
         final variableDeclaration = program.body.first as VariableDeclaration;
         final variable = variableDeclaration.variable;
@@ -1440,12 +1444,12 @@ void main() {
     test(
       'float negative should be parsed',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Float t = -1.0',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
 
         final variableDeclaration = program.body.first as VariableDeclaration;
         final variable = variableDeclaration.variable;
@@ -1460,12 +1464,12 @@ void main() {
     test(
       'None should be parsed',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Actor t = None',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
 
         final variableDeclaration = program.body.first as VariableDeclaration;
         final variable = variableDeclaration.variable;
@@ -1480,16 +1484,16 @@ void main() {
     test(
       'should have one Literal and one empty BlockStatement',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'While true\n'
               'EndWhile',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwWhileOutside: false,
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final whileStatement = program.body.first as WhileStatement;
         final test = whileStatement.test as Literal;
         final consequent = whileStatement.consequent as BlockStatement;
@@ -1501,10 +1505,10 @@ void main() {
     test(
       'should have one BinaryExpression with one CallExpression and UnaryExpression',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'While call() == -1\n'
               'EndWhile',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwWhileOutside: false,
             throwCallOutside: false,
@@ -1512,7 +1516,7 @@ void main() {
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final whileStatement = program.body.first as WhileStatement;
         final test = whileStatement.test as BinaryExpression;
         final call = test.left as CallExpression;
@@ -1529,16 +1533,16 @@ void main() {
       'should not report missing EndWhile'
       ' when a LineComment is at the end of the line',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'While (true);\n'
               'EndWhile\n',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwWhileOutside: false,
           ),
         );
 
-        expect(() => tree.parse(), isNot(throwsA(NodeException)));
+        expect(() => parser.parse(), isNot(throwsA(NodeException)));
       },
     );
   });
@@ -1547,15 +1551,15 @@ void main() {
     test(
       'should have a FunctionStatement in a BlockStatement',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'State Test\n'
               '  Int Function test()\n'
               '  EndFunction\n'
               'EndState',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final state = tree.parse().body.first as StateStatement;
+        final state = parser.parse().body.first as StateStatement;
         expect(state.id.name, equals('Test'));
         expect(state.body.body, hasLength(1));
         final functionStatement = state.body.body.first as FunctionStatement;
@@ -1567,15 +1571,15 @@ void main() {
     test(
       'should have a Auto flag',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Auto State Test\n'
               '  Int Function test()\n'
               '  EndFunction\n'
               'EndState',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final state = tree.parse().body.first as StateStatement;
+        final state = parser.parse().body.first as StateStatement;
         expect(state.flag, isNotNull);
       },
     );
@@ -1583,16 +1587,16 @@ void main() {
     test(
       'that have a StateStatement in the BlockStatement should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'State Test\n'
               '  State T\n'
               '  EndState\n'
               'EndState',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<StateStatementException>()),
         );
       },
@@ -1603,12 +1607,12 @@ void main() {
     test(
       'should have Native flag',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Event OnTest() Native',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final event = tree.parse().body.first as EventStatement;
+        final event = parser.parse().body.first as EventStatement;
         expect(event.body, isNull);
         expect(event.flags, hasLength(1));
         final flag = event.flags.first;
@@ -1620,13 +1624,13 @@ void main() {
     test(
       'should have one parameter',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Event OnTest(String n)\n'
               'EndEvent',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
-        final event = tree.parse().body.first as EventStatement;
+        final event = parser.parse().body.first as EventStatement;
         expect(event.flags, isEmpty);
         expect(event.id.name, equals('OnTest'));
         final params = event.params;
@@ -1642,18 +1646,18 @@ void main() {
     test(
       'with an State statement should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Event toto()\n'
               '  State A\n'
               '  EndState\n'
               'EndEvent',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<UnexpectedTokenException>()),
         );
       },
@@ -1662,14 +1666,14 @@ void main() {
     test(
       'with parenthesis before the identifier should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Event (toto)(String n)\n'
               'EndEvent',
-          options: TreeOptions(throwScriptnameMissing: false),
+          options: ParserOptions(throwScriptnameMissing: false),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<UnexpectedTokenException>()),
         );
       },
@@ -1678,18 +1682,18 @@ void main() {
     test(
       'with an Function statement should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Event toto()\n'
               '  Function A()\n'
               '  EndFunction\n'
               'EndEvent',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<UnexpectedTokenException>()),
         );
       },
@@ -1698,16 +1702,16 @@ void main() {
     test(
       'without parenthesis should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Event toto\n'
               'EndEvent',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<UnexpectedTokenException>()),
         );
       },
@@ -1716,7 +1720,7 @@ void main() {
 
   group('Parent MemberExpression', () {
     test('used as a function should throws an error', () {
-      final tree = Tree(
+      final parser = Parser(
         content: 'ScriptName test extends Form\n'
             '\n'
             'Function test()\n'
@@ -1724,11 +1728,12 @@ void main() {
             'EndFunction',
       );
 
-      expect(() => tree.parse(), throwsA(TypeMatcher<ParentMemberException>()));
+      expect(
+          () => parser.parse(), throwsA(TypeMatcher<ParentMemberException>()));
     });
 
     test('used when ScriptName does not extends should throws an error', () {
-      final tree = Tree(
+      final parser = Parser(
         content: 'ScriptName test\n'
             '\n'
             'Function test()\n'
@@ -1736,11 +1741,12 @@ void main() {
             'EndFunction',
       );
 
-      expect(() => tree.parse(), throwsA(TypeMatcher<ParentMemberException>()));
+      expect(
+          () => parser.parse(), throwsA(TypeMatcher<ParentMemberException>()));
     });
 
     test('used as a property of MemberExpression should throws an error', () {
-      final tree = Tree(
+      final parser = Parser(
         content: 'ScriptName test extends Form\n'
             '\n'
             'Function test()\n'
@@ -1748,7 +1754,8 @@ void main() {
             'EndFunction',
       );
 
-      expect(() => tree.parse(), throwsA(TypeMatcher<ParentMemberException>()));
+      expect(
+          () => parser.parse(), throwsA(TypeMatcher<ParentMemberException>()));
     });
   });
 
@@ -1756,7 +1763,7 @@ void main() {
     test(
       'should have a ScriptName, two FunctionStatement and one StateStatement',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'ScriptName Test\n'
               'Function test()\n'
               'EndFunction\n'
@@ -1772,7 +1779,7 @@ void main() {
               'EndState\n',
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
 
         expect(program.body, hasLength(4));
       },
@@ -1783,14 +1790,14 @@ void main() {
     test(
       'should have an identifier',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Import Debug',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
-        final importStatement = tree.parse().body.first as ImportStatement;
+        final importStatement = parser.parse().body.first as ImportStatement;
         expect(importStatement.id.name, equals('Debug'));
       },
     );
@@ -1798,15 +1805,15 @@ void main() {
     test(
       'with parenthesis should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Import (Debug)',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<UnexpectedTokenException>()),
         );
       },
@@ -1815,17 +1822,17 @@ void main() {
     test(
       'inside a FunctionStatement should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Function test()\n'
               '  Import Debug\n'
               'EndFunction',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<UnexpectedTokenException>()),
         );
       },
@@ -1834,17 +1841,17 @@ void main() {
     test(
       'inside a StateStatement should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'State test\n'
               '  Import Debug\n'
               'EndState',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<UnexpectedTokenException>()),
         );
       },
@@ -1853,17 +1860,17 @@ void main() {
     test(
       'inside a EventStatement should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'Event test()\n'
               '  Import Debug\n'
               'EndEvent',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<UnexpectedTokenException>()),
         );
       },
@@ -1874,15 +1881,15 @@ void main() {
     test(
       'should have plus operator, one Literal and Identifier',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: '1 + serviceName',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwBinaryOutside: false,
           ),
         );
 
-        final expression = tree.parse().body.first as ExpressionStatement;
+        final expression = parser.parse().body.first as ExpressionStatement;
         final binary = expression.expression as BinaryExpression;
         final left = binary.left as Literal;
         final right = binary.right as Identifier;
@@ -1895,15 +1902,15 @@ void main() {
     test(
       'should have greater than or equals, one Literal and Identifier',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: '1 >= serviceName',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwBinaryOutside: false,
           ),
         );
 
-        final expression = tree.parse().body.first as ExpressionStatement;
+        final expression = parser.parse().body.first as ExpressionStatement;
         final binary = expression.expression as BinaryExpression;
         final left = binary.left as Literal;
         final right = binary.right as Identifier;
@@ -1918,14 +1925,14 @@ void main() {
     test(
       'with Literal "="',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'a = 1',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
-        final assign = tree.parse().body.first as AssignExpression;
+        final assign = parser.parse().body.first as AssignExpression;
         final left = assign.left as Identifier;
         final right = assign.right as Literal;
         expect(assign.operator, equals('='));
@@ -1937,14 +1944,14 @@ void main() {
     test(
       'with Literal "+="',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'a += 1',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
-        final assign = tree.parse().body.first as AssignExpression;
+        final assign = parser.parse().body.first as AssignExpression;
         final left = assign.left as Identifier;
         final right = assign.right as Literal;
         expect(assign.operator, equals('+='));
@@ -1956,15 +1963,15 @@ void main() {
     test(
       'with CallExpression with MemberExpression',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'a = Uti.Get()',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwCallOutside: false,
           ),
         );
 
-        final assign = tree.parse().body.first as AssignExpression;
+        final assign = parser.parse().body.first as AssignExpression;
         final left = assign.left as Identifier;
         final right = assign.right as CallExpression;
         final member = right.callee as MemberExpression;
@@ -1981,18 +1988,18 @@ void main() {
     test(
       'should ignore backslash to go to next token',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'if true && \\ \n'
               '  false\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
             throwBinaryOutside: false,
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final ifStatement = program.body.first as IfStatement;
         final ifTest = ifStatement.test as BinaryExpression;
         expect((ifTest.left as Literal).value, isTrue);
@@ -2004,18 +2011,18 @@ void main() {
     test(
       'more than one line terminator in the same line should throws an error',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'if true && \\ \\ \n'
               '  false\n'
               'EndIf',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
             throwIfOutside: false,
           ),
         );
 
         expect(
-          () => tree.parse(),
+          () => parser.parse(),
           throwsA(TypeMatcher<UnexpectedTokenException>()),
         );
       },
@@ -2024,15 +2031,15 @@ void main() {
 
   group('NewExpression', () {
     test('should create new array', () {
-      final tree = Tree(
+      final parser = Parser(
         content: 'String[] s = new String[4]',
-        options: TreeOptions(
+        options: ParserOptions(
           throwScriptnameMissing: false,
           throwNewOutside: false,
         ),
       );
 
-      final program = tree.parse();
+      final program = parser.parse();
       final variableDeclaration = program.body.first as VariableDeclaration;
       final variable = variableDeclaration.variable;
       expect(variable.kind, equals('String[]'));
@@ -2046,30 +2053,30 @@ void main() {
     });
 
     test('with index non Literal should throws an error', () {
-      final tree = Tree(
+      final parser = Parser(
         content: 'String[] s = new String[n()]',
-        options: TreeOptions(
+        options: ParserOptions(
           throwScriptnameMissing: false,
           throwNewOutside: false,
         ),
       );
 
       expect(
-        () => tree.parse(),
+        () => parser.parse(),
         throwsA(TypeMatcher<UnexpectedTokenException>()),
       );
     });
 
     test('outside of Function/Event should throws an error', () {
-      final tree = Tree(
+      final parser = Parser(
         content: 'String[] s = new String[3]',
-        options: TreeOptions(
+        options: ParserOptions(
           throwScriptnameMissing: false,
         ),
       );
 
       expect(
-        () => tree.parse(),
+        () => parser.parse(),
         throwsA(TypeMatcher<UnexpectedTokenException>()),
       );
     });
@@ -2079,14 +2086,14 @@ void main() {
     test(
       'should assign to array index',
       () {
-        final tree = Tree(
+        final parser = Parser(
           content: 'toto[4] = true',
-          options: TreeOptions(
+          options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
-        final program = tree.parse();
+        final program = parser.parse();
         final expression = program.body.first as ExpressionStatement;
         final assign = expression.expression as AssignExpression;
         final member = assign.left as MemberExpression;
@@ -2106,17 +2113,17 @@ void main() {
       test(
         '"++" and "--" operators should throws an error',
         () {
-          final tree = Tree(
+          final parser = Parser(
             content: 'int f = 0\n'
                 'f++',
-            options: TreeOptions(
+            options: ParserOptions(
               throwBinaryOutside: false,
               throwScriptnameMissing: false,
             ),
           );
 
           expect(
-            () => tree.parse(),
+            () => parser.parse(),
             throwsA(TypeMatcher<UnexpectedTokenException>()),
           );
         },

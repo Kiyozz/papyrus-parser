@@ -1,4 +1,4 @@
-class TreeOptions {
+class ParserOptions {
   final bool throwScriptnameMissing;
   final bool throwScriptnameMismatch;
   final bool throwReturnOutside;
@@ -9,7 +9,7 @@ class TreeOptions {
   final bool throwBinaryOutside;
   final bool throwNewOutside;
 
-  const TreeOptions({
+  const ParserOptions({
     this.throwScriptnameMissing = true,
     this.throwScriptnameMismatch = true,
     this.throwReturnOutside = true,

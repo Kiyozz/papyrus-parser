@@ -1,14 +1,14 @@
 import 'package:charcode/ascii.dart';
 import 'package:collection/collection.dart';
 
-import 'position.dart';
 import 'exception.dart';
-import 'types.dart';
 import 'node.dart';
 import 'options.dart';
+import 'position.dart';
 import 'property.dart';
+import 'types.dart';
 
-class Context {
+class _Context {
   List<NodeType> tokens = [];
   List<Node> nodes = [];
 
@@ -22,23 +22,49 @@ class Context {
 /// Parse an entire Papyrus source code
 ///
 /// Emits a AST format Program.
-class Tree {
+class Parser {
+  Parser({
+    required String content,
+    ParserOptions options = const ParserOptions(),
+    String? filename,
+    int start = 0,
+    Position startPos = const Position(line: 0, character: 0),
+  })  : _content = content,
+        _options = options,
+        _filename = filename,
+        _start = start,
+        _startPos = startPos;
+
   final String? _filename;
   final String _content;
-  final TreeOptions _options;
+  final ParserOptions _options;
   Position _startPos = Position(line: 0, character: 0);
   Position _endPos = Position(line: 0, character: 0);
 
   Position get _currentPos {
-    final meta = _numberOfLinesBetweenAt(0, to: _pos, updateState: false);
-
-    return meta.asPosition();
-
-    // return Position(line: _currentLine, character: _currentCharacter);
+    return Position(line: _currentLine, character: _currentCharacter);
   }
 
   /// The current position of the tokenizer in the _content
-  int _pos = 0;
+  int _effectivePos = 0;
+
+  set _pos(int v) {
+    var diff = _pos;
+
+    while (diff < v) {
+      if (_currentCodeUnitAt(pos: diff) == $lf) {
+        ++_currentLine;
+        _currentCharacter = 0;
+      } else {
+        ++_currentCharacter;
+      }
+      diff++;
+    }
+
+    _effectivePos = v;
+  }
+
+  int get _pos => _effectivePos;
 
   int _currentLine = 0;
   int _currentCharacter = 0;
@@ -85,7 +111,7 @@ class Tree {
   /// The context stack is used to superficially track syntactic
   /// context to predict whether a regular expression is allowed in a
   /// given position
-  final _context = Context();
+  final _context = _Context();
 
   /// Checks any keyword presence
   final _keywords = RegExp(
@@ -99,18 +125,6 @@ class Tree {
   int get _next => _content.codeUnitAt(_pos + 1);
 
   ScriptNameStatement? _scriptName;
-
-  Tree({
-    required String content,
-    TreeOptions options = const TreeOptions(),
-    String? filename,
-    int start = 0,
-    Position startPos = const Position(line: 0, character: 0),
-  })  : _content = content,
-        _options = options,
-        _filename = filename,
-        _start = start,
-        _startPos = startPos;
 
   Program parse() {
     final program = _startNode().toProgram();
@@ -150,7 +164,7 @@ class Tree {
     return _finishNode(program);
   }
 
-  int? _currentCodeUnit({int? pos}) {
+  int? _currentCodeUnitAt({int? pos}) {
     try {
       return _content.codeUnitAt(pos ?? _pos);
     } on RangeError catch (_) {
@@ -296,7 +310,7 @@ class Tree {
           }
         }
 
-        if (_isNewLine(_currentCodeUnit())) {
+        if (_isNewLine(_currentCodeUnitAt())) {
           return _parseBlock(
             node.toBlockStatement(),
             context ?? [_close(startType)],
@@ -329,7 +343,7 @@ class Tree {
     }
 
     _isInEvent = true;
-    _goNext();
+    node.meta = _parseIdentifier();
     node.id = _parseIdentifier();
     _expect(NodeType.parenL);
     node.params = _parseBindingList(NodeType.parenR, false);
@@ -377,7 +391,8 @@ class Tree {
     }
 
     if (!node.isNative) {
-      node.body = _parseBlock(null, [NodeType.endEventKw]);
+      node.body = _parseBlock(null, [NodeType.endEventKw], next: false);
+      node.endMeta = _parseIdentifier();
     }
 
     node = _finishNode(node);
@@ -501,8 +516,7 @@ class Tree {
       );
     }
 
-    _goNext();
-
+    node.meta = _parseIdentifier();
     node.id = _parseIdentifier();
     node.kind = kind;
 
@@ -534,7 +548,13 @@ class Tree {
       flagDeclaration.flag = flagDeclaration.flagFromType(_type);
       flagDeclaration.raw = _value;
 
-      node.flags.add(flagDeclaration);
+      node.flags.add(
+        _finishNode(
+          flagDeclaration,
+          end: lastFlagEnd,
+          endPos: lastFlagEndPos,
+        ),
+      );
 
       lastFlagEnd = _pos;
       lastFlagEndPos = _currentPos;
@@ -612,7 +632,10 @@ class Tree {
       var block = _parseBlock(
         _startNode().toBlockStatement(),
         [NodeType.endPropertyKw],
+        next: false,
       );
+
+      fullNode.endMeta = _parseIdentifier();
 
       if (block.body.isEmpty) {
         throw PropertyException(
@@ -699,7 +722,7 @@ class Tree {
       );
     }
 
-    _goNext();
+    node.meta = _parseIdentifier();
 
     if (_type != NodeType.name) {
       throw UnexpectedTokenException(
@@ -838,16 +861,16 @@ class Tree {
       );
     }
 
-    _goNext();
-
+    node.meta = _parseIdentifier();
     node.test = _parseExpression();
-    node.consequent = _parseBlock(null, [NodeType.endWhileKw]);
+    node.consequent = _parseBlock(null, [NodeType.endWhileKw], next: false);
+    node.endMeta = _parseIdentifier();
 
     return _finishNode(node);
   }
 
-  Node _parseIfStatement(IfStatement node) {
-    _goNext();
+  IfStatement _parseIfStatement(IfStatement node) {
+    node.meta = _parseIdentifier();
 
     if (_options.throwIfOutside && !_isInFunctionContext) {
       throw UnexpectedTokenException(
@@ -872,13 +895,16 @@ class Tree {
     );
 
     if (_type == NodeType.elseKw) {
-      _goNext();
+      node.alternateMeta = _parseIdentifier();
 
-      node.alternate = _parseBlock(null, [NodeType.endIfKw]);
+      node.alternate = _parseBlock(null, [NodeType.endIfKw], next: false);
+      node.endMeta = _parseIdentifier();
     } else if (_type == NodeType.elseIfKw) {
-      node.alternate = _parseIfStatement(_startNode().toIfStatement());
+      final alternate = _parseIfStatement(_startNode().toIfStatement());
+      node.alternate = alternate;
+      node.endMeta = alternate.endMeta;
     } else {
-      _goNext();
+      node.endMeta = _parseIdentifier();
     }
 
     return _finishNode(node);
@@ -898,7 +924,6 @@ class Tree {
     }
 
     _isInFunction = true;
-    _goNext();
     node = _parseFunction(node);
 
     if (!_isInState) {
@@ -909,6 +934,7 @@ class Tree {
   }
 
   FunctionStatement _parseFunction(FunctionStatement node) {
+    node.meta = _parseIdentifier();
     node.id = _parseIdentifier();
 
     _parseFunctionParams(node);
@@ -978,7 +1004,8 @@ class Tree {
   void _parseFunctionBody(FunctionStatement node) {
     if (node.isNative) return;
 
-    node.body = _parseBlock(null, [NodeType.endFunctionKw]);
+    node.body = _parseBlock(null, [NodeType.endFunctionKw], next: false);
+    node.endMeta = _parseIdentifier();
   }
 
   BlockStatement _parseBlock(
@@ -1181,7 +1208,7 @@ class Tree {
 
         parentNode.name = _value;
 
-        if (_currentCodeUnit() == $open_paren) {
+        if (_currentCodeUnitAt() == $open_paren) {
           throw ParentMemberException(
             'Parent cannot be used as a function',
             start: parentNode.start,
@@ -1507,7 +1534,7 @@ class Tree {
     if (_type == NodeType.name) {
       node.name = _value.toString();
     } else if (_isKeyword(_type)) {
-      node.name = _keywordName(_type);
+      node.name = _value.toString();
     } else {
       throw UnexpectedTokenException(
         start: _pos,
@@ -1541,20 +1568,15 @@ class Tree {
     if (code == $backslash) {
       ++_pos;
       _goNext();
-      final contentFromLastTokenAndPos =
-          _content.substring(_lastTokenEnd, _end);
-      final backslashes = contentFromLastTokenAndPos.codeUnits
-          .where((code) => code == $backslash);
+      final posFirstBackslash = _content.codeUnits.indexOf(
+        $backslash,
+        _lastTokenEnd,
+      );
 
-      if (backslashes.length > 1) {
-        final posFirstBackslash = _content.codeUnits.indexOf(
-          $backslash,
-          _lastTokenEnd,
-        );
+      if (posFirstBackslash != -1) {
         final position = _numberOfLinesBetweenAt(
           posFirstBackslash,
           to: _end,
-          updateState: false,
         );
 
         throw UnexpectedTokenException(
@@ -1562,7 +1584,7 @@ class Tree {
               'Expected a new line after a LineTerminator',
           start: posFirstBackslash,
           end: _end,
-          startPos: position.asPosition(),
+          startPos: position,
           endPos: _endPos,
         );
       }
@@ -1752,7 +1774,7 @@ class Tree {
   }
 
   int? _fullCodeUnitAtPos({int? pos}) {
-    final code = _currentCodeUnit(pos: pos ?? _pos);
+    final code = _currentCodeUnitAt(pos: pos ?? _pos);
 
     if (code == null) return null;
 
@@ -1770,8 +1792,8 @@ class Tree {
 
     loop:
     while (pos < _content.length) {
-      final ch = _currentCodeUnit(pos: pos);
-      final next = _currentCodeUnit(pos: pos + 1);
+      final ch = _currentCodeUnitAt(pos: pos);
+      final next = _currentCodeUnitAt(pos: pos + 1);
 
       switch (ch) {
         case $space:
@@ -1835,14 +1857,13 @@ class Tree {
       final position = _numberOfLinesBetweenAt(
         start,
         to: end,
-        updateState: false,
       );
 
       throw UnexpectedTokenException(
         message: 'Doc comment is not closed',
         start: start,
         end: _pos,
-        startPos: position.asPosition(),
+        startPos: position,
         endPos: _currentPos,
       );
     }
@@ -1860,14 +1881,13 @@ class Tree {
       final position = _numberOfLinesBetweenAt(
         start,
         to: end,
-        updateState: false,
       );
 
       throw UnexpectedTokenException(
         message: 'Block comment is not closed',
         start: start,
         end: _pos,
-        startPos: position.asPosition(),
+        startPos: position,
         endPos: _currentPos,
       );
     }
@@ -2015,12 +2035,12 @@ class Tree {
       );
     }
 
-    var next = _currentCodeUnit();
+    var next = _currentCodeUnitAt();
 
     if (next == $dot) {
       ++_pos;
       _readInt(10, null);
-      next = _currentCodeUnit();
+      next = _currentCodeUnitAt();
     }
 
     if (next == $E || next == $e) {
@@ -2081,7 +2101,7 @@ class Tree {
         );
       }
 
-      final ch = _currentCodeUnit();
+      final ch = _currentCodeUnitAt();
 
       if (ch == $double_quote) {
         break;
@@ -2129,7 +2149,7 @@ class Tree {
         );
       }
 
-      final ch = _currentCodeUnit();
+      final ch = _currentCodeUnitAt();
 
       if (ch == $single_quote) {
         break;
@@ -2161,7 +2181,7 @@ class Tree {
 
     for (var i = 0; i < (len ?? double.infinity); ++i, ++_pos) {
       try {
-        final code = _currentCodeUnit();
+        final code = _currentCodeUnitAt();
         int? val;
 
         if (code == null) break;
@@ -2214,7 +2234,7 @@ class Tree {
       case $f:
         return '\f';
       case $cr:
-        if (_currentCodeUnit() == $lf) {
+        if (_currentCodeUnitAt() == $lf) {
           ++_pos;
         }
         continue lf;
@@ -2247,12 +2267,6 @@ class Tree {
 
   bool _isKeyword(NodeType type) {
     return keywordsMap.containsValue(type);
-  }
-
-  String _keywordName(NodeType type) {
-    return keywordsMap.entries
-        .firstWhere((element) => element.value == type)
-        .key;
   }
 
   bool _hasNewLineBetweenLastToken() {
@@ -2289,28 +2303,16 @@ class Tree {
     }
   }
 
-  PositionInformation _numberOfLinesBetweenAt(
+  Position _numberOfLinesBetweenAt(
     int from, {
     required int to,
-    bool updateState = true,
   }) {
-    var line = _currentLine;
-    var char = _currentCharacter;
+    final lines = _content.substring(from, to).split('\n');
+    final lengthLastLine = lines.last.length;
 
-    for (var i = from; i < to; i++) {
-      if (_content.codeUnitAt(i) == $lf) {
-        line++;
-        char = 0;
-      } else {
-        char++;
-      }
-    }
-
-    if (updateState) {
-      _currentLine = line;
-      _currentCharacter = char;
-    }
-
-    return PositionInformation(line: line, character: char);
+    return Position(
+      line: lines.length - 1,
+      character: lengthLastLine,
+    );
   }
 }

@@ -1,5 +1,3 @@
-import 'package:papyrus_parser/papyrus_parser.dart';
-
 import 'node.dart';
 import 'types.dart';
 

@@ -2,7 +2,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Dart: create build directory",
+      "label": "Dart: Create build directory",
 			"type": "shell",
 			"presentation": {
 				"panel": "shared",
@@ -12,21 +12,21 @@
 			"args": ["-p", "build"]
 		},
 		{
-      "label": "Dart: build",
+      "label": "Dart: Build",
 			"type": "shell",
 			"group": {
 				"kind": "build",
 				"isDefault": true
 			},
 			"presentation": {
-				"panel": "dedicated",
+				"panel": "shared",
 				"reveal": "never"
 			},
       "dependsOn": [
-        "Dart: create build directory"
+        "Dart: Create build directory"
       ],
       "command": "dart",
-			"args": ["compile", "exe", "bin/papyrus_linter.dart", "-o", "build/papyrus-linter"]
+			"args": ["compile", "exe", "bin/papyrus.dart", "-o", "build/papyrus"]
 		}
   ]
 }

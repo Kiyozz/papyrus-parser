@@ -1,14 +1,15 @@
-import 'rule.dart';
-import '../ast/node.dart';
+import 'package:papyrus/ast.dart';
 
-class Report {
+import 'rule.dart';
+
+class Problem {
   final Rule rule;
   final Severity severity;
   final Node node;
   final String messageId;
   final Map<String, dynamic> data;
 
-  const Report({
+  const Problem({
     required this.rule,
     required this.severity,
     required this.node,

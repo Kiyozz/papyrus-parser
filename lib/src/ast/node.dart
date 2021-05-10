@@ -1,5 +1,7 @@
 import 'package:collection/collection.dart';
-import 'package:papyrus_parser/papyrus_parser.dart';
+
+import 'exception.dart';
+import 'position.dart';
 import 'types.dart';
 
 class Node {
@@ -71,7 +73,11 @@ class Node {
 
   Identifier toIdentifier() {
     return Identifier(
-        start: start, startPos: startPos, end: end, endPos: endPos);
+      start: start,
+      startPos: startPos,
+      end: end,
+      endPos: endPos,
+    );
   }
 
   BinaryExpression toBinaryExpression() {
@@ -100,12 +106,20 @@ class Node {
 
   CallExpression toCallExpression() {
     return CallExpression(
-        start: start, startPos: startPos, end: end, endPos: endPos);
+      start: start,
+      startPos: startPos,
+      end: end,
+      endPos: endPos,
+    );
   }
 
   PropertyDeclaration toPropertyDeclaration() {
     return PropertyDeclaration(
-        start: start, startPos: startPos, end: end, endPos: endPos);
+      start: start,
+      startPos: startPos,
+      end: end,
+      endPos: endPos,
+    );
   }
 
   PropertyFlagDeclaration toPropertyFlagDeclaration() {
@@ -258,6 +272,7 @@ class FlagDeclaration<T> extends Node {
 
 class ScriptNameStatement extends Node {
   late Identifier id;
+  late Identifier meta;
   ExtendsDeclaration? extendsDeclaration;
   List<ScriptNameFlagDeclaration> flags = [];
 
@@ -283,6 +298,7 @@ class ScriptNameStatement extends Node {
     final json = {
       ...super.toJson(),
       'id': id.toJson(),
+      'meta': meta.toJson(),
       'extends': extendsDeclaration?.toJson(),
       'flags': flags.map((flag) => flag.toJson()).toList(),
     };
@@ -368,9 +384,12 @@ class IfStatement extends Node {
   NodeType type = NodeType.ifKw;
   NodeType endType = NodeType.endIfKw;
 
+  late Identifier meta;
+  late Identifier endMeta;
   late Node test;
-  late Node consequent;
+  late BlockStatement consequent;
   Node? alternate;
+  Identifier? alternateMeta;
 
   IfStatement({
     required int start,
@@ -384,6 +403,8 @@ class IfStatement extends Node {
     final json = {
       ...super.toJson(),
       'endType': endType.name,
+      'meta': meta.toJson(),
+      'endMeta': endMeta.toJson(),
       'test': test.toJson(),
       'consequent': test.toJson(),
       'alternate': alternate?.toJson(),
@@ -398,6 +419,8 @@ class FunctionStatement extends Node {
   NodeType type = NodeType.functionKw;
   NodeType endType = NodeType.endFunctionKw;
 
+  late Identifier meta;
+  Identifier? endMeta;
   late Identifier id;
   BlockStatement? body;
   List<VariableDeclaration> params = [];
@@ -440,6 +463,8 @@ class FunctionStatement extends Node {
     final json = {
       ...super.toJson(),
       'id': id.toJson(),
+      'meta': meta.toJson(),
+      'endMeta': endMeta?.toJson(),
       'params': params.map((elem) => elem.toJson()).toList(),
       'flags': flags.map((flag) => flag.toJson()).toList(),
       'kind': kind,
@@ -758,6 +783,7 @@ class PropertyDeclaration extends Node {
   @override
   NodeType type = NodeType.propertyKw;
 
+  late Identifier meta;
   late Identifier id;
   late String kind;
   Node? init;
@@ -801,6 +827,7 @@ class PropertyDeclaration extends Node {
     final json = {
       ...super.toJson(),
       'id': id.toJson(),
+      'meta': meta.toJson(),
       'init': init?.toJson(),
       'kind': kind,
       'flags': flags.map((flag) => flag.toJson()).toList(),
@@ -813,6 +840,7 @@ class PropertyDeclaration extends Node {
 class PropertyFullDeclaration extends PropertyDeclaration {
   FunctionStatement? getter;
   FunctionStatement? setter;
+  late Identifier endMeta;
 
   PropertyFullDeclaration({
     required int start,
@@ -825,6 +853,7 @@ class PropertyFullDeclaration extends PropertyDeclaration {
   Map<String, dynamic> toJson() {
     return {
       ...super.toJson(),
+      'endMeta': endMeta.toJson(),
       'getter': getter?.toJson(),
       'setter': setter?.toJson(),
     };
@@ -960,7 +989,9 @@ class WhileStatement extends Node {
   NodeType endType = NodeType.endWhileKw;
 
   late Node test;
-  late Node consequent;
+  late BlockStatement consequent;
+  late Identifier meta;
+  late Identifier endMeta;
 
   WhileStatement({
     required int start,
@@ -973,6 +1004,8 @@ class WhileStatement extends Node {
   Map<String, dynamic> toJson() {
     final json = {
       ...super.toJson(),
+      'meta': meta.toJson(),
+      'endMeta': endMeta.toJson(),
       'endType': endType.name,
       'test': test.toJson(),
       'consequent': consequent.toJson(),
@@ -1054,6 +1087,9 @@ class EventStatement extends Node {
   @override
   NodeType type = NodeType.eventKw;
   NodeType endType = NodeType.endEventKw;
+
+  late Identifier meta;
+  Identifier? endMeta;
 
   late Identifier id;
   BlockStatement? body;
