@@ -1,50 +1,67 @@
+import 'dart:isolate';
+
 import 'package:papyrus/ast.dart';
 
 import 'problem_holder.dart';
+import 'rule.dart';
 
-class IdentifierParams {
+class StartParam {
+  final SendPort port;
+  final ProblemHolder context;
+  final Program program;
+  final Rule rule;
+
+  const StartParam({
+    required this.context,
+    required this.program,
+    required this.rule,
+    required this.port,
+  });
+}
+
+class IdentifierParam {
   final NodeType from;
   final ProblemHolder context;
   final Identifier id;
 
-  const IdentifierParams({
+  const IdentifierParam({
     required this.from,
     required this.context,
     required this.id,
   });
 }
 
-class FlagParams {
+class FlagParam {
   final NodeType from;
   final ProblemHolder context;
   final FlagDeclaration flag;
 
-  const FlagParams({
+  const FlagParam({
     required this.from,
     required this.context,
     required this.flag,
   });
 }
 
-class MetaParams {
+class MetaParam {
   final NodeType from;
   final ProblemHolder context;
   final Identifier id;
 
-  const MetaParams({
+  const MetaParam({
     required this.from,
     required this.context,
     required this.id,
   });
 }
 
-class KindParams {
+class KindParam {
   final NodeType from;
   final ProblemHolder context;
   final Node node;
   final String kind;
 
-  const KindParams({
+  const KindParam({
     required this.from,
     required this.context,
     required this.node,

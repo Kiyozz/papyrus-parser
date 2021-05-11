@@ -729,6 +729,7 @@ class Variable extends Node {
   String kind = '';
 
   late Identifier id;
+  Node? initMeta;
   Node? init;
   bool isArray = false;
 
@@ -754,18 +755,18 @@ class Variable extends Node {
 }
 
 class CallExpression extends Node {
-  @override
-  NodeType type = NodeType.callExpression;
-
-  late Node callee;
-  List<Node> arguments = [];
-
   CallExpression({
     required int start,
     required Position startPos,
     int end = 0,
     Position? endPos,
   }) : super(start: start, startPos: startPos, end: end, endPos: endPos);
+
+  @override
+  NodeType type = NodeType.callExpression;
+
+  late Node callee;
+  List<Node> arguments = [];
 
   @override
   Map<String, dynamic> toJson() {
@@ -780,6 +781,13 @@ class CallExpression extends Node {
 }
 
 class PropertyDeclaration extends Node {
+  PropertyDeclaration({
+    required int start,
+    required Position startPos,
+    int end = 0,
+    Position? endPos,
+  }) : super(start: start, startPos: startPos, end: end, endPos: endPos);
+
   @override
   NodeType type = NodeType.propertyKw;
 
@@ -789,12 +797,17 @@ class PropertyDeclaration extends Node {
   Node? init;
   List<PropertyFlagDeclaration> flags = [];
 
-  PropertyDeclaration({
-    required int start,
-    required Position startPos,
-    int end = 0,
-    Position? endPos,
-  }) : super(start: start, startPos: startPos, end: end, endPos: endPos);
+  bool get isFull => this is PropertyFullDeclaration;
+  bool get isAutoOrAutoReadonly => isAuto || isAutoReadonly;
+  bool get isAuto => hasFlag(PropertyFlag.auto);
+  bool get isAutoReadonly => hasFlag(PropertyFlag.autoReadonly);
+  bool get isConditional => hasFlag(PropertyFlag.conditional);
+  bool get isHidden => hasFlag(PropertyFlag.hidden);
+  bool get hasNoFlags => flags.isEmpty;
+
+  bool hasFlag(PropertyFlag propertyFlag) {
+    return flags.any((flag) => flag.flag == propertyFlag);
+  }
 
   PropertyFullDeclaration toPropertyFullDeclaration() {
     return PropertyFullDeclaration(
@@ -806,20 +819,8 @@ class PropertyDeclaration extends Node {
       ..flags = flags
       ..id = id
       ..init = init
-      ..kind = kind;
-  }
-
-  bool get isFull => this is PropertyFullDeclaration;
-
-  bool get isAutoOrAutoReadonly => isAuto || isAutoReadonly;
-  bool get isAuto => hasFlag(PropertyFlag.auto);
-  bool get isAutoReadonly => hasFlag(PropertyFlag.autoReadonly);
-  bool get isConditional => hasFlag(PropertyFlag.conditional);
-  bool get isHidden => hasFlag(PropertyFlag.hidden);
-  bool get hasNoFlags => flags.isEmpty;
-
-  bool hasFlag(PropertyFlag propertyFlag) {
-    return flags.any((flag) => flag.flag == propertyFlag);
+      ..kind = kind
+      ..meta = meta;
   }
 
   @override
@@ -906,17 +907,18 @@ class PropertyFlagDeclaration extends FlagDeclaration<PropertyFlag> {
 }
 
 class ReturnStatement extends Node {
-  Node? argument;
-
-  @override
-  NodeType type = NodeType.returnKw;
-
   ReturnStatement({
     required int start,
     required Position startPos,
     int end = 0,
     Position? endPos,
   }) : super(start: start, startPos: startPos, end: end, endPos: endPos);
+
+  Node? argument;
+  late Identifier meta;
+
+  @override
+  NodeType type = NodeType.returnKw;
 
   @override
   Map<String, dynamic> toJson() {

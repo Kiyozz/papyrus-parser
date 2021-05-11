@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:isolate';
 
 import 'package:papyrus/ast.dart';
+import 'package:papyrus/linter.dart';
 
 import 'problem_holder.dart';
 import 'params.dart';
@@ -11,9 +12,7 @@ class Scanner {
   const Scanner();
 
   /// List of active rules
-  final List<Rule> _activeRules = const [
-    NamingConventionRule(),
-  ];
+  final List<Rule> _activeRules = const [NamingConventionRule(), SpaceRule()];
 
   /// Max problems reported
   final int _maxProblems = 60;
@@ -39,7 +38,7 @@ class Scanner {
         _processRule,
         StartParam(
           context: context,
-          node: program.body,
+          program: program,
           rule: rule,
           port: port.sendPort,
         ),
@@ -68,14 +67,16 @@ class Scanner {
 }
 
 void _processRule(StartParam param) {
-  final program = param.node;
+  final program = param.program;
   final context = param.context;
   final port = param.port;
   final rule = param.rule;
 
-  for (final node in program) {
+  for (final node in program.body) {
     _processNode(node: node, context: context, rule: rule);
   }
+
+  _processNode(node: program, context: context, rule: rule);
 
   port.send(context);
 }
@@ -85,32 +86,32 @@ void _processNode({
   required ProblemHolder context,
   required Rule rule,
 }) {
-  final idParams = <IdentifierParams>[];
-  final flagParams = <FlagParams>[];
-  final metaParams = <MetaParams>[];
-  final kindParams = <KindParams>[];
+  final idParams = <IdentifierParam>[];
+  final flagParams = <FlagParam>[];
+  final metaParams = <MetaParam>[];
+  final kindParams = <KindParam>[];
 
   if (node is ScriptNameStatement) {
     idParams.add(
-      IdentifierParams(from: node.type, context: context, id: node.id),
+      IdentifierParam(from: node.type, context: context, id: node.id),
     );
 
     metaParams.add(
-      MetaParams(from: node.type, context: context, id: node.meta),
+      MetaParam(from: node.type, context: context, id: node.meta),
     );
 
     for (final flag in node.flags) {
       flagParams.add(
-        FlagParams(from: node.type, context: context, flag: flag),
+        FlagParam(from: node.type, context: context, flag: flag),
       );
     }
   } else if (node is PropertyDeclaration) {
     metaParams.add(
-      MetaParams(from: node.type, context: context, id: node.meta),
+      MetaParam(from: node.type, context: context, id: node.meta),
     );
 
     kindParams.add(
-      KindParams(
+      KindParam(
         from: node.type,
         context: context,
         node: node,
@@ -133,45 +134,41 @@ void _processNode({
       }
 
       metaParams.add(
-        MetaParams(from: node.type, context: context, id: node.endMeta),
+        MetaParam(from: node.type, context: context, id: node.endMeta),
       );
     }
 
     for (final flag in node.flags) {
       flagParams.add(
-        FlagParams(from: node.type, context: context, flag: flag),
+        FlagParam(from: node.type, context: context, flag: flag),
       );
     }
   } else if (node is FunctionStatement) {
     idParams.add(
-      IdentifierParams(from: node.type, context: context, id: node.id),
+      IdentifierParam(from: node.type, context: context, id: node.id),
     );
 
     metaParams.add(
-      MetaParams(from: node.type, context: context, id: node.meta),
+      MetaParam(from: node.type, context: context, id: node.meta),
     );
 
     final endMeta = node.endMeta;
 
     if (endMeta != null) {
       metaParams.add(
-        MetaParams(from: node.type, context: context, id: endMeta),
+        MetaParam(from: node.type, context: context, id: endMeta),
       );
     }
 
     if (node.kind != '') {
       kindParams.add(
-        KindParams(
+        KindParam(
           from: node.type,
           context: context,
           node: node,
           kind: node.kind,
         ),
       );
-    }
-
-    for (final blockNode in (node.body?.body ?? [])) {
-      _processNode(node: blockNode, context: context, rule: rule);
     }
 
     final body = node.body;
@@ -186,13 +183,13 @@ void _processNode({
 
     for (final flag in node.flags) {
       flagParams.add(
-        FlagParams(from: node.type, context: context, flag: flag),
+        FlagParam(from: node.type, context: context, flag: flag),
       );
     }
   } else if (node is IfStatement) {
     metaParams.addAll([
-      MetaParams(from: node.type, context: context, id: node.meta),
-      MetaParams(from: node.type, context: context, id: node.endMeta),
+      MetaParam(from: node.type, context: context, id: node.meta),
+      MetaParam(from: node.type, context: context, id: node.endMeta),
     ]);
 
     _processNode(node: node.consequent, context: context, rule: rule);
@@ -204,7 +201,7 @@ void _processNode({
 
       if (alternateMeta != null) {
         metaParams.add(
-          MetaParams(from: alternate.type, context: context, id: alternateMeta),
+          MetaParam(from: alternate.type, context: context, id: alternateMeta),
         );
       }
 
@@ -214,18 +211,18 @@ void _processNode({
     _processNode(node: node.test, context: context, rule: rule);
   } else if (node is EventStatement) {
     idParams.add(
-      IdentifierParams(from: node.type, context: context, id: node.id),
+      IdentifierParam(from: node.type, context: context, id: node.id),
     );
 
     metaParams.add(
-      MetaParams(from: node.type, context: context, id: node.meta),
+      MetaParam(from: node.type, context: context, id: node.meta),
     );
 
     final endMeta = node.endMeta;
 
     if (endMeta != null) {
       metaParams.add(
-        MetaParams(from: node.type, context: context, id: endMeta),
+        MetaParam(from: node.type, context: context, id: endMeta),
       );
     }
 
@@ -241,12 +238,12 @@ void _processNode({
 
     for (final flag in node.flags) {
       flagParams.add(
-        FlagParams(from: node.type, context: context, flag: flag),
+        FlagParam(from: node.type, context: context, flag: flag),
       );
     }
   } else if (node is StateStatement) {
     idParams.add(
-      IdentifierParams(from: node.type, context: context, id: node.id),
+      IdentifierParam(from: node.type, context: context, id: node.id),
     );
 
     _processNode(node: node.body, context: context, rule: rule);
@@ -254,11 +251,11 @@ void _processNode({
     final flag = node.flag;
 
     if (flag != null) {
-      flagParams.add(FlagParams(from: node.type, context: context, flag: flag));
+      flagParams.add(FlagParam(from: node.type, context: context, flag: flag));
     }
   } else if (node is VariableDeclaration) {
     idParams.add(
-      IdentifierParams(
+      IdentifierParam(
         from: NodeType.variable,
         context: context,
         id: node.variable.id,
@@ -266,17 +263,21 @@ void _processNode({
     );
 
     kindParams.add(
-      KindParams(
+      KindParam(
         from: node.type,
         context: context,
         node: node,
         kind: node.variable.kind,
       ),
     );
+
+    final init = node.variable.init;
+
+    if (init != null) {}
   } else if (node is WhileStatement) {
     metaParams.addAll([
-      MetaParams(from: node.type, context: context, id: node.meta),
-      MetaParams(from: node.type, context: context, id: node.endMeta),
+      MetaParam(from: node.type, context: context, id: node.meta),
+      MetaParam(from: node.type, context: context, id: node.endMeta),
     ]);
 
     _processNode(node: node.consequent, context: context, rule: rule);
@@ -284,6 +285,18 @@ void _processNode({
     for (final blockNode in node.body) {
       _processNode(node: blockNode, context: context, rule: rule);
     }
+  } else if (node is ReturnStatement) {
+    metaParams.add(
+      MetaParam(from: node.type, context: context, id: node.meta),
+    );
+
+    final argument = node.argument;
+
+    if (argument != null) {
+      _processNode(node: argument, context: context, rule: rule);
+    }
+  } else if (node is Program) {
+    rule.startProgram(program: node, context: context);
   }
 
   for (final param in idParams) {

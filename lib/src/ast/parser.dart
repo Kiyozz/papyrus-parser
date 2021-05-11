@@ -1,5 +1,6 @@
 import 'package:charcode/ascii.dart';
 import 'package:collection/collection.dart';
+import 'package:papyrus/ast.dart';
 
 import 'exception.dart';
 import 'node.dart';
@@ -490,7 +491,7 @@ class Parser {
       );
     }
 
-    _goNext();
+    node.meta = _parseIdentifier();
 
     if (!_hasNewLineBetweenLastToken()) {
       node.argument = _parseExpression();
@@ -643,7 +644,38 @@ class Parser {
           start: node.start,
           end: block.end,
           startPos: node.startPos,
-          endPos: block.endPos,
+          endPos: fullNode.endMeta.endPos,
+        );
+      }
+
+      final notFunction = block.body.firstWhereOrNull(
+        (elem) => elem is! FunctionStatement,
+      );
+
+      if (notFunction != null) {
+        throw PropertyException(
+          'Full property "$name" may only have a getter and/or a setter',
+          start: notFunction.start,
+          end: notFunction.end,
+          startPos: notFunction.startPos,
+          endPos: notFunction.endPos,
+        );
+      }
+
+      final blockFunctions = block.body.whereType<FunctionStatement>();
+      final notGetterOrSetter = blockFunctions.firstWhereOrNull(
+        (elem) =>
+            elem.id.name.toLowerCase() != 'get' &&
+            elem.id.name.toLowerCase() != 'set',
+      );
+
+      if (notGetterOrSetter != null) {
+        throw PropertyException(
+          'Full property "$name" may only have a getter and/or a setter',
+          start: notGetterOrSetter.start,
+          end: notGetterOrSetter.end,
+          startPos: notGetterOrSetter.startPos,
+          endPos: notGetterOrSetter.endPos,
         );
       }
 
@@ -658,7 +690,8 @@ class Parser {
           final isEmpty = setter.params.isEmpty;
           final hasMoreOneParams = setter.params.length > 1;
           final isNotSameKind = setter.params.isNotEmpty &&
-              setter.params.first.variable.kind != node.kind;
+              setter.params.first.variable.kind.toLowerCase() !=
+                  node.kind.toLowerCase();
 
           if (isEmpty || hasMoreOneParams || isNotSameKind) {
             throw PropertyException(
@@ -675,7 +708,7 @@ class Parser {
         if (getter != null) {
           fullNode.getter = getter as FunctionStatement;
 
-          if (getter.kind != node.kind) {
+          if (getter.kind.toLowerCase() != node.kind.toLowerCase()) {
             throw PropertyException(
               'Getter should return the same type as the Property "$name"',
               start: getter.start,
@@ -694,6 +727,16 @@ class Parser {
               endPos: getter.endPos,
             );
           }
+        }
+
+        if (getter == null && setter == null) {
+          throw PropertyException(
+            'Full property "$name" must have a getter and/or a setter',
+            start: node.start,
+            end: block.end,
+            startPos: node.startPos,
+            endPos: block.endPos,
+          );
         }
 
         node = fullNode;
@@ -789,6 +832,15 @@ class Parser {
     required int start,
     required Position startPos,
   }) {
+    if (_type == NodeType.name && !_hasNewLineBetweenLastToken()) {
+      throw UnexpectedTokenException(
+        start: _pos,
+        end: _pos,
+        startPos: _currentPos,
+        endPos: _currentPos,
+      );
+    }
+
     if (_type != NodeType.extendsKw) return null;
 
     final node = _startNode().toExtendsDeclaration();
@@ -1051,9 +1103,8 @@ class Parser {
 
   VariableDeclaration _parseFunctionParamMaybeDefault(
     int start,
-    Position startPos, [
-    Node? left,
-  ]) {
+    Position startPos,
+  ) {
     if (_type != NodeType.name) {
       throw UnexpectedTokenException(
         start: start,
@@ -1091,6 +1142,16 @@ class Parser {
     final left = _parseExprOps();
 
     if (_type == NodeType.assign) {
+      if (!_isInFunctionContext) {
+        throw UnexpectedTokenException(
+          message: 'Cannot have assign outside of Function/Event',
+          start: _start,
+          end: _end,
+          startPos: _startPos,
+          endPos: _endPos,
+        );
+      }
+
       final n = _startNode().toAssignExpression();
 
       n.left = left;
@@ -1568,25 +1629,31 @@ class Parser {
     if (code == $backslash) {
       ++_pos;
       _goNext();
-      final posFirstBackslash = _content.codeUnits.indexOf(
-        $backslash,
-        _lastTokenEnd,
+      final sliceFromLastToken = _content.substring(_lastTokenEnd, _end);
+      final backslashes = sliceFromLastToken.codeUnits.where(
+        (code) => code == $backslash,
       );
 
-      if (posFirstBackslash != -1) {
-        final position = _numberOfLinesBetweenAt(
-          posFirstBackslash,
-          to: _end,
+      if (backslashes.length > 1) {
+        final posFirstBackslash = _content.codeUnits.indexOf(
+          $backslash,
+          _lastTokenEnd,
         );
+        if (posFirstBackslash != -1) {
+          final position = _numberOfLinesBetweenAt(
+            posFirstBackslash,
+            to: _end,
+          );
 
-        throw UnexpectedTokenException(
-          message: 'Unexpected token. '
-              'Expected a new line after a LineTerminator',
-          start: posFirstBackslash,
-          end: _end,
-          startPos: position,
-          endPos: _endPos,
-        );
+          throw UnexpectedTokenException(
+            message: 'Unexpected token. '
+                'Expected a new line after a LineTerminator',
+            start: posFirstBackslash,
+            end: _end,
+            startPos: position,
+            endPos: _endPos,
+          );
+        }
       }
 
       return;

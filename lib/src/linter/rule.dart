@@ -1,24 +1,8 @@
-import 'dart:isolate';
-
 import 'package:papyrus/ast.dart';
 import 'package:recase/recase.dart';
 
 import 'problem.dart';
 import 'problem_holder.dart';
-
-class StartParam {
-  final SendPort port;
-  final ProblemHolder context;
-  final List<Node> node;
-  final Rule rule;
-
-  const StartParam({
-    required this.context,
-    required this.node,
-    required this.rule,
-    required this.port,
-  });
-}
 
 abstract class Rule {
   final String name;
@@ -54,6 +38,11 @@ abstract class Rule {
     required String kind,
     required ProblemHolder context,
     required NodeType from,
+  });
+
+  void startProgram({
+    required Program program,
+    required ProblemHolder context,
   });
 }
 
@@ -208,6 +197,12 @@ class NamingConventionRule extends Rule {
     }
   }
 
+  @override
+  void startProgram({
+    required Program program,
+    required ProblemHolder context,
+  }) {}
+
   bool _isValidIdentifier(NodeType node) {
     return node == NodeType.variable ||
         node == NodeType.functionKw ||
@@ -237,6 +232,78 @@ class NamingConventionRule extends Rule {
         return 'ScriptName';
       default:
         return name;
+    }
+  }
+}
+
+class SpaceRule extends Rule {
+  const SpaceRule()
+      : super(
+          hasAutoFix: false,
+          messages: const {
+            'extraSpace': 'Avoid extra spaces',
+            'extraLine': 'Avoid extra newline,',
+            'missingSpace': 'Missing space',
+            'missingLine': 'Missing newline',
+          },
+          name: 'space',
+        );
+
+  @override
+  void startIdentifier({
+    required Identifier node,
+    required ProblemHolder context,
+    required NodeType from,
+  }) {}
+
+  @override
+  void startFlag({
+    required FlagDeclaration node,
+    required ProblemHolder context,
+    required NodeType from,
+  }) {}
+
+  @override
+  void startKind({
+    required Node node,
+    required String kind,
+    required ProblemHolder context,
+    required NodeType from,
+  }) {}
+
+  @override
+  void startMeta({
+    required Identifier node,
+    required ProblemHolder context,
+    required NodeType from,
+  }) {}
+
+  @override
+  void startProgram({
+    required Program program,
+    required ProblemHolder context,
+  }) {
+    final body = program.body;
+
+    for (var i = 1; i < body.length; i++) {
+      final previous = body[i - 1];
+      final current = body[i];
+
+      if (previous.endPos.line + 2 < current.startPos.line) {
+        context.add(
+          Problem(
+            rule: this,
+            severity: Severity.warning,
+            node: Node(
+              start: previous.end,
+              end: current.start,
+              startPos: previous.endPos,
+              endPos: current.startPos,
+            ),
+            messageId: 'extraLine',
+          ),
+        );
+      }
     }
   }
 }
