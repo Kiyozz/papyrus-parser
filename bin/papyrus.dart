@@ -10,7 +10,7 @@ void main(List<String> arguments) async {
   final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, port);
   final scanner = const Scanner();
 
-  print('Start listening on ${server.address.address}:$port');
+  print('Server listening on ${server.address.address}:$port');
 
   server.listen((client) {
     print(
@@ -39,7 +39,7 @@ void main(List<String> arguments) async {
             watch.stop();
             client.write(json.encode({'filename': filename, 'result': result}));
           },
-          onError: (e) {
+          onError: (e, stack) {
             watch.stop();
             if (e is NodeException) {
               client.write(json.encode({
@@ -52,6 +52,8 @@ void main(List<String> arguments) async {
                 }
               }));
             } else {
+              print(stack);
+
               client.write(json.encode({
                 'filename': filename,
                 'result': {

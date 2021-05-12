@@ -112,7 +112,7 @@ void main() {
         expect(body.body, isNotNull);
         expect(body.type, equals(NodeType.functionKw));
         expect(body.params, hasLength(1));
-        final param = body.params.first as VariableDeclaration;
+        final param = body.params.first;
         final variable = param.variable;
         expect(variable.kind, 'String');
         expect(variable.init, isNull);
@@ -273,8 +273,7 @@ void main() {
         );
 
         final statement = parser.parse().body.first as FunctionStatement;
-        final variableDeclaration =
-            statement.params.first as VariableDeclaration;
+        final variableDeclaration = statement.params.first;
         final variable = variableDeclaration.variable;
         expect(variable.init, TypeMatcher<Literal>());
       },
@@ -793,7 +792,8 @@ void main() {
             (program.body.first as FunctionStatement).body as BlockStatement;
         expect(block.body, hasLength(1));
         final returnStatement = block.body.first as ReturnStatement;
-        final argument = returnStatement.argument as BinaryExpression;
+        final parenthesis = returnStatement.argument as ParenthesisExpression;
+        final argument = parenthesis.body as BinaryExpression;
         final left = argument.left as CallExpression;
         final right = argument.right as CallExpression;
         final lCallee = left.callee as Identifier;
@@ -820,7 +820,8 @@ void main() {
         final argument = returnStatement.argument as BinaryExpression;
         expect(argument.operator, equals('*'));
         expect(argument.type, equals(NodeType.binary));
-        final left = argument.left as BinaryExpression;
+        final parenthesis = argument.left as ParenthesisExpression;
+        final left = parenthesis.body as BinaryExpression;
         expect(left.operator, equals('-'));
         expect((left.left as Identifier).name, equals('currentTime'));
         expect((left.right as Identifier).name, equals('lastTime'));
@@ -881,7 +882,7 @@ void main() {
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
         expect(ifStatement.test, TypeMatcher<Literal>());
-        final consequent = ifStatement.consequent as BlockStatement;
+        final consequent = ifStatement.consequent;
         expect(consequent.type, equals(NodeType.block));
       },
     );
@@ -901,8 +902,9 @@ void main() {
         final program = parser.parse();
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
-        expect(ifStatement.test, TypeMatcher<Literal>());
-        final consequent = ifStatement.consequent as BlockStatement;
+        final parenthesis = ifStatement.test as ParenthesisExpression;
+        expect(parenthesis.body, TypeMatcher<Literal>());
+        final consequent = ifStatement.consequent;
         expect(consequent.type, equals(NodeType.block));
       },
     );
@@ -921,9 +923,16 @@ void main() {
         );
 
         final ifStatement = parser.parse().body.first as IfStatement;
-        final test = ifStatement.test as UnaryExpression;
-        expect(test.argument, TypeMatcher<Literal>());
-        expect(test.operator, equals('!'));
+        final parenthesis = ifStatement.test as ParenthesisExpression;
+        final unary = parenthesis.body as UnaryExpression;
+        final parenthesisOne = unary.argument as ParenthesisExpression;
+        final parenthesisTwo = parenthesisOne.body as ParenthesisExpression;
+        final parenthesisThree = parenthesisTwo.body as ParenthesisExpression;
+        final parenthesisFour = parenthesisThree.body as ParenthesisExpression;
+        final parenthesisFive = parenthesisFour.body as ParenthesisExpression;
+        final parenthesisSix = parenthesisFive.body as ParenthesisExpression;
+        expect(parenthesisSix.body, TypeMatcher<Literal>());
+        expect(unary.operator, equals('!'));
       },
     );
 
@@ -944,11 +953,12 @@ void main() {
         final program = parser.parse();
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
-        final ifTest = ifStatement.test as BinaryExpression;
+        final parenthesis = ifStatement.test as ParenthesisExpression;
+        final ifTest = parenthesis.body as BinaryExpression;
         expect(ifTest.type, equals(NodeType.binary));
         expect(ifTest.left, TypeMatcher<CallExpression>());
         expect(ifTest.right, TypeMatcher<Literal>());
-        final consequent = ifStatement.consequent as BlockStatement;
+        final consequent = ifStatement.consequent;
         expect(consequent.type, equals(NodeType.block));
       },
     );
@@ -970,11 +980,12 @@ void main() {
         final program = parser.parse();
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
-        final ifTest = ifStatement.test as BinaryExpression;
+        final parenthesis = ifStatement.test as ParenthesisExpression;
+        final ifTest = parenthesis.body as BinaryExpression;
         expect(ifTest.type, equals(NodeType.binary));
         expect(ifTest.left, TypeMatcher<CallExpression>());
         expect(ifTest.right, TypeMatcher<CallExpression>());
-        final consequent = ifStatement.consequent as BlockStatement;
+        final consequent = ifStatement.consequent;
         expect(consequent.type, equals(NodeType.block));
       },
     );
@@ -996,12 +1007,13 @@ void main() {
         final program = parser.parse();
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
-        final ifTest = ifStatement.test as BinaryExpression;
+        final parenthesis = ifStatement.test as ParenthesisExpression;
+        final ifTest = parenthesis.body as BinaryExpression;
         expect(ifTest.type, equals(NodeType.binary));
         final left = ifTest.left as CallExpression;
         expect(left.arguments, hasLength(1));
         expect(ifTest.right, TypeMatcher<CallExpression>());
-        final consequent = ifStatement.consequent as BlockStatement;
+        final consequent = ifStatement.consequent;
         expect(consequent.type, equals(NodeType.block));
       },
     );
@@ -1024,13 +1036,14 @@ void main() {
         final program = parser.parse();
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
-        final ifTest = ifStatement.test as BinaryExpression;
+        final parenthesis = ifStatement.test as ParenthesisExpression;
+        final ifTest = parenthesis.body as BinaryExpression;
         expect(ifTest.type, equals(NodeType.binary));
         final left = ifTest.left as CallExpression;
         expect(left.arguments, hasLength(1));
         expect(left.arguments[0], TypeMatcher<CallExpression>());
         expect(ifTest.right, TypeMatcher<CallExpression>());
-        final consequent = ifStatement.consequent as BlockStatement;
+        final consequent = ifStatement.consequent;
         expect(consequent.type, equals(NodeType.block));
       },
     );
@@ -1053,7 +1066,8 @@ void main() {
         final ifTest = ifStatement.test as BinaryExpression;
         expect(ifTest.operator, equals('*'));
         expect(ifTest.type, equals(NodeType.binary));
-        final left = ifTest.left as BinaryExpression;
+        final parenthesis = ifTest.left as ParenthesisExpression;
+        final left = parenthesis.body as BinaryExpression;
         expect(left.operator, equals('-'));
         expect((left.left as Identifier).name, equals('currentTime'));
         expect((left.right as Identifier).name, equals('lastTime'));
@@ -1086,7 +1100,7 @@ void main() {
         expect(program.body, hasLength(1));
         final ifStatement = program.body.first as IfStatement;
         expect(ifStatement.test, isNotNull);
-        final consequent = ifStatement.consequent as BlockStatement;
+        final consequent = ifStatement.consequent;
         expect(consequent.body, hasLength(2));
       },
     );
@@ -1198,7 +1212,7 @@ void main() {
 
         final ifStatement = parser.parse().body.first as IfStatement;
         final test = ifStatement.test as Literal;
-        final consequent = ifStatement.consequent as BlockStatement;
+        final consequent = ifStatement.consequent;
         final alternate = ifStatement.alternate as BlockStatement;
 
         expect(test.value, isTrue);
@@ -1223,7 +1237,7 @@ void main() {
 
         final ifStatement = parser.parse().body.first as IfStatement;
         final test = ifStatement.test as Literal;
-        final consequent = ifStatement.consequent as BlockStatement;
+        final consequent = ifStatement.consequent;
         final alternate = ifStatement.alternate as BlockStatement;
 
         expect(test.value, isTrue);
@@ -1251,7 +1265,7 @@ void main() {
         final test = ifStatement.test as Literal;
         final elseIfStatement = ifStatement.alternate as IfStatement;
         final elseIfTest = elseIfStatement.test as Literal;
-        final elseIfConsequent = elseIfStatement.consequent as BlockStatement;
+        final elseIfConsequent = elseIfStatement.consequent;
         final elseIfAlternate = elseIfStatement.alternate as BlockStatement;
 
         expect(test.value, isTrue);
@@ -1305,15 +1319,17 @@ void main() {
       'should have a Literal positional param and an optional AssignExpression param',
       () {
         final parser = Parser(
-          content: 'shouldAssign(false, t = true)',
+          content: 'Function test()\n'
+              '  shouldAssign(false, t = true)\n'
+              'EndFunction',
           options: ParserOptions(
             throwScriptnameMissing: false,
-            throwCallOutside: false,
           ),
         );
 
         final program = parser.parse();
-        final call = program.body.first as CallExpression;
+        final functionTest = program.body.first as FunctionStatement;
+        final call = functionTest.body?.body.first as CallExpression;
         expect(call.arguments, hasLength(2));
         final callee = call.callee as Identifier;
         expect(callee.name, 'shouldAssign');
@@ -1353,21 +1369,26 @@ void main() {
       'should have multiple BinaryExpression',
       () {
         final parser = Parser(
-          content: 'Float t = (chance * (1 - health / 100)) as Float',
+          content: 'Function test()\n'
+              '  Float t = (chance * (1 - health / 100)) as Float\n'
+              'EndFunction',
           options: ParserOptions(
             throwScriptnameMissing: false,
-            throwCastOutside: false,
-            throwBinaryOutside: false,
           ),
         );
 
         final program = parser.parse();
-        final variable = (program.body.first as VariableDeclaration).variable;
+        final functionTest = program.body.first as FunctionStatement;
+        final body = functionTest.body as BlockStatement;
+        final variableDeclaration = body.body.first as VariableDeclaration;
+        final variable = variableDeclaration.variable;
         final cast = variable.init as CastExpression;
-        final firstBinary = cast.id as BinaryExpression;
+        final parenthesis = cast.id as ParenthesisExpression;
+        final firstBinary = parenthesis.body as BinaryExpression;
         expect(firstBinary.operator, equals('*'));
         expect((firstBinary.left as Identifier).name, equals('chance'));
-        final rightFirstBinary = firstBinary.right as BinaryExpression;
+        final parenthesisRight = firstBinary.right as ParenthesisExpression;
+        final rightFirstBinary = parenthesisRight.body as BinaryExpression;
         final literalOne = rightFirstBinary.left as Literal;
         expect(literalOne.value, equals(1));
         expect(rightFirstBinary.operator, equals('-'));
@@ -1496,7 +1517,7 @@ void main() {
         final program = parser.parse();
         final whileStatement = program.body.first as WhileStatement;
         final test = whileStatement.test as Literal;
-        final consequent = whileStatement.consequent as BlockStatement;
+        final consequent = whileStatement.consequent;
         expect(test.value, true);
         expect(consequent.body, isEmpty);
       },
@@ -1926,13 +1947,16 @@ void main() {
       'with Literal "="',
       () {
         final parser = Parser(
-          content: 'a = 1',
+          content: 'Function test()\n'
+              '  a = 1\n'
+              'EndFunction',
           options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
-        final assign = parser.parse().body.first as AssignExpression;
+        final functionTest = parser.parse().body.first as FunctionStatement;
+        final assign = functionTest.body?.body.first as AssignExpression;
         final left = assign.left as Identifier;
         final right = assign.right as Literal;
         expect(assign.operator, equals('='));
@@ -1945,13 +1969,16 @@ void main() {
       'with Literal "+="',
       () {
         final parser = Parser(
-          content: 'a += 1',
+          content: 'Function test()\n'
+              '  a += 1\n'
+              'EndFunction',
           options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
-        final assign = parser.parse().body.first as AssignExpression;
+        final functionTest = parser.parse().body.first as FunctionStatement;
+        final assign = functionTest.body?.body.first as AssignExpression;
         final left = assign.left as Identifier;
         final right = assign.right as Literal;
         expect(assign.operator, equals('+='));
@@ -1964,14 +1991,16 @@ void main() {
       'with CallExpression with MemberExpression',
       () {
         final parser = Parser(
-          content: 'a = Uti.Get()',
+          content: 'Function test()\n'
+              '  a = Uti.Get()\n'
+              'EndFunction',
           options: ParserOptions(
             throwScriptnameMissing: false,
-            throwCallOutside: false,
           ),
         );
 
-        final assign = parser.parse().body.first as AssignExpression;
+        final functionTest = parser.parse().body.first as FunctionStatement;
+        final assign = functionTest.body?.body.first as AssignExpression;
         final left = assign.left as Identifier;
         final right = assign.right as CallExpression;
         final member = right.callee as MemberExpression;
@@ -2045,8 +2074,8 @@ void main() {
       expect(variable.kind, equals('String[]'));
       expect(variable.isArray, isTrue);
       final init = variable.init as NewExpression;
-      final member = init.argument as MemberExpression;
-      expect(member.computed, isTrue);
+      final member = init.argument;
+      expect(member.isComputed, isTrue);
       expect(member.property, TypeMatcher<Literal>());
       final object = member.object as Identifier;
       expect(object.name, equals('String'));
@@ -2087,18 +2116,21 @@ void main() {
       'should assign to array index',
       () {
         final parser = Parser(
-          content: 'toto[4] = true',
+          content: 'Function test()\n'
+              '  toto[4] = true\n'
+              'EndFunction',
           options: ParserOptions(
             throwScriptnameMissing: false,
           ),
         );
 
         final program = parser.parse();
-        final expression = program.body.first as ExpressionStatement;
+        final functionTest = program.body.first as FunctionStatement;
+        final expression = functionTest.body?.body.first as ExpressionStatement;
         final assign = expression.expression as AssignExpression;
         final member = assign.left as MemberExpression;
         expect(member.property, TypeMatcher<Literal>());
-        expect(member.computed, isTrue);
+        expect(member.isComputed, isTrue);
         final object = member.object as Identifier;
         expect(object.name, equals('toto'));
         final right = assign.right as Literal;

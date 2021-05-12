@@ -81,7 +81,8 @@ enum NodeType {
   prefix,
   callExpression,
   castExpression,
-  unary
+  unary,
+  parenthesis
 }
 
 const keywordsMap = {
@@ -278,6 +279,8 @@ extension NodeTypeString on NodeType {
         return 'While';
       case NodeType.unary:
         return 'Unary';
+      case NodeType.parenthesis:
+        return 'Parenthesis';
     }
   }
 }

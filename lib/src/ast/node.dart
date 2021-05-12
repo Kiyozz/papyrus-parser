@@ -212,6 +212,15 @@ class Node {
     );
   }
 
+  ParenthesisExpression toParenthesisExpression() {
+    return ParenthesisExpression(
+      start: start,
+      startPos: startPos,
+      end: end,
+      endPos: endPos,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     final json = {
       'type': type.name,
@@ -648,7 +657,7 @@ class NewExpression extends Node {
   @override
   NodeType type = NodeType.newKw;
 
-  late Node argument;
+  late MemberExpression argument;
   late Identifier meta;
 
   NewExpression({
@@ -676,7 +685,7 @@ class MemberExpression extends Node {
 
   late Node property;
   late Node object;
-  bool computed = false;
+  bool isComputed = false;
 
   MemberExpression({
     required int start,
@@ -691,7 +700,7 @@ class MemberExpression extends Node {
       ...super.toJson(),
       'object': object.toJson(),
       'property': property.toJson(),
-      'computed': computed,
+      'computed': isComputed,
     };
 
     return json;
@@ -1021,6 +1030,8 @@ class StateStatement extends Node {
   @override
   NodeType type = NodeType.stateKw;
   NodeType endType = NodeType.endStateKw;
+  late Identifier meta;
+  late Identifier endMeta;
   late Identifier id;
   StateFlagDeclaration? flag;
   late BlockStatement body;
@@ -1186,4 +1197,18 @@ class ImportStatement extends Node {
 
     return json;
   }
+}
+
+class ParenthesisExpression extends Node {
+  @override
+  NodeType type = NodeType.parenthesis;
+
+  Node? body;
+
+  ParenthesisExpression({
+    required int start,
+    required Position startPos,
+    int end = 0,
+    Position? endPos,
+  }) : super(start: start, startPos: startPos, end: end, endPos: endPos);
 }

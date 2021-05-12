@@ -10,12 +10,14 @@ class StartParam {
   final ProblemHolder context;
   final Program program;
   final Rule rule;
+  final String text;
 
   const StartParam({
     required this.context,
     required this.program,
     required this.rule,
     required this.port,
+    required this.text,
   });
 }
 

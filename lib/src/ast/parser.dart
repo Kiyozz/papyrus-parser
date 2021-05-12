@@ -392,8 +392,16 @@ class Parser {
     }
 
     if (!node.isNative) {
-      node.body = _parseBlock(null, [NodeType.endEventKw], next: false);
-      node.endMeta = _parseIdentifier();
+      final block = _parseBlock(
+        _startNodeAt(_lastTokenEnd, _lastTokenEndPos).toBlockStatement(),
+        [NodeType.endEventKw],
+        next: false,
+      );
+      final endMeta = _parseIdentifier();
+      block.end = endMeta.start;
+      block.endPos = endMeta.startPos.copy();
+      node.body = block;
+      node.endMeta = endMeta;
     }
 
     node = _finishNode(node);
@@ -443,10 +451,16 @@ class Parser {
       node.startPos = startPos;
     }
 
-    _goNext();
-
+    node.meta = _parseIdentifier();
     node.id = _parseIdentifier();
-    node.body = _parseBlock(null, [NodeType.endStateKw]);
+    node.body = _parseBlock(
+      _startNodeAt(
+        node.id.end,
+        node.id.endPos,
+      ).toBlockStatement(),
+      [NodeType.endStateKw],
+      next: false,
+    );
 
     if (!node.isValid) {
       throw StateStatementException(
@@ -459,6 +473,11 @@ class Parser {
     }
 
     _isInState = false;
+
+    node.endMeta = _parseIdentifier();
+
+    node.body.end = node.endMeta.end;
+    node.body.endPos = node.endMeta.endPos.copy();
 
     return _finishNode(node);
   }
@@ -629,14 +648,16 @@ class Parser {
       }
 
       final fullNode = node.toPropertyFullDeclaration();
-
-      var block = _parseBlock(
+      final block = _parseBlock(
         _startNode().toBlockStatement(),
         [NodeType.endPropertyKw],
         next: false,
       );
 
       fullNode.endMeta = _parseIdentifier();
+
+      block.end = fullNode.endMeta.end;
+      block.endPos = fullNode.endMeta.endPos.copy();
 
       if (block.body.isEmpty) {
         throw PropertyException(
@@ -788,8 +809,7 @@ class Parser {
           end: start,
           startPos: startPos,
           endPos: startPos,
-          message: 'ScriptNameStatement Identifier must be the same '
-              'as the filename ($filename)',
+          message: 'Expected $filename',
         );
       }
     }
@@ -809,6 +829,18 @@ class Parser {
 
   List<ScriptNameFlagDeclaration> _parseScriptNameFlags() {
     final flags = <ScriptNameFlagDeclaration>[];
+
+    if (_type == NodeType.name && !_hasNewLineBetweenLastToken()) {
+      final currentPos = _currentPos;
+
+      throw UnexpectedTokenException(
+        message: 'Unknown flag $_value',
+        start: _pos,
+        end: _pos,
+        startPos: currentPos,
+        endPos: currentPos,
+      );
+    }
 
     while (_type == NodeType.conditionalKw || _type == NodeType.hiddenKw) {
       final startType = _type;
@@ -848,7 +880,7 @@ class Parser {
 
     if (_hasNewLineBetweenLastToken()) {
       throw ScriptNameException(
-        message: 'ScriptName statement is not complete',
+        message: 'Missing extended Script',
         start: start,
         end: node.meta.end,
         startPos: startPos,
@@ -915,8 +947,14 @@ class Parser {
 
     node.meta = _parseIdentifier();
     node.test = _parseExpression();
-    node.consequent = _parseBlock(null, [NodeType.endWhileKw], next: false);
+    node.consequent = _parseBlock(
+      _startNodeAt(node.test.end, node.test.endPos).toBlockStatement(),
+      [NodeType.endWhileKw],
+      next: false,
+    );
     node.endMeta = _parseIdentifier();
+    node.consequent.end = node.endMeta.start;
+    node.consequent.endPos = node.endMeta.startPos.copy();
 
     return _finishNode(node);
   }
@@ -937,7 +975,7 @@ class Parser {
     node.test = _parseExpression();
 
     node.consequent = _parseBlock(
-      null,
+      _startNodeAt(node.test.start, node.test.startPos).toBlockStatement(),
       [
         NodeType.elseKw,
         NodeType.elseIfKw,
@@ -947,16 +985,33 @@ class Parser {
     );
 
     if (_type == NodeType.elseKw) {
-      node.alternateMeta = _parseIdentifier();
+      final alternateMeta = _parseIdentifier();
 
-      node.alternate = _parseBlock(null, [NodeType.endIfKw], next: false);
+      node.consequent.end = alternateMeta.start;
+      node.consequent.endPos = alternateMeta.startPos.copy();
+      node.alternateMeta = alternateMeta;
+
+      final alternate = _parseBlock(
+        _startNodeAt(
+          alternateMeta.end,
+          alternateMeta.endPos.copy(),
+        ).toBlockStatement(),
+        [NodeType.endIfKw],
+        next: false,
+      );
+
       node.endMeta = _parseIdentifier();
+      node.alternate = _finishNode(alternate);
     } else if (_type == NodeType.elseIfKw) {
       final alternate = _parseIfStatement(_startNode().toIfStatement());
       node.alternate = alternate;
+      node.alternateMeta = alternate.meta;
+      node.consequent.end = alternate.meta.start;
+      node.consequent.endPos = alternate.meta.startPos.copy();
       node.endMeta = alternate.endMeta;
     } else {
       node.endMeta = _parseIdentifier();
+      node.consequent = _finishNode(node.consequent);
     }
 
     return _finishNode(node);
@@ -1056,8 +1111,15 @@ class Parser {
   void _parseFunctionBody(FunctionStatement node) {
     if (node.isNative) return;
 
-    node.body = _parseBlock(null, [NodeType.endFunctionKw], next: false);
-    node.endMeta = _parseIdentifier();
+    final block = _parseBlock(
+      _startNodeAt(_lastTokenEnd, _lastTokenEndPos).toBlockStatement(),
+      [NodeType.endFunctionKw],
+      next: false,
+    );
+    final endMeta = _parseIdentifier();
+    node.endMeta = endMeta;
+    block.endPos = endMeta.startPos;
+    node.body = block;
   }
 
   BlockStatement _parseBlock(
@@ -1329,6 +1391,7 @@ class Parser {
   Node _parseParenAndDistinguishExpression() {
     Node? expr;
     var first = true;
+    final node = _startNode().toParenthesisExpression();
     _goNext();
 
     while (_type != NodeType.parenR) {
@@ -1347,7 +1410,9 @@ class Parser {
       );
     }
 
-    return expr;
+    node.body = expr;
+
+    return _finishNode(node);
   }
 
   Node _parseImport() {
@@ -1395,7 +1460,7 @@ class Parser {
     }
 
     node.meta = meta;
-    node.argument = _parseExprSubscripts();
+    node.argument = _parseExprSubscripts() as MemberExpression;
     final argument = node.argument;
 
     if (argument is! MemberExpression) {
@@ -1409,8 +1474,8 @@ class Parser {
 
     if (argument.property is! Literal) {
       throw UnexpectedTokenException(
-        message:
-            'NewExpression array size must be an Int Literal. Got ${argument.property.runtimeType}',
+        message: 'NewExpression array size must be an Int Literal. '
+            'Got ${argument.property.runtimeType}',
         start: argument.start,
         end: argument.end,
         startPos: argument.startPos,
@@ -1473,7 +1538,7 @@ class Parser {
         node.property = _parseIdentifier();
       }
 
-      node.computed = computed;
+      node.isComputed = computed;
 
       base = _finishNode(node);
     } else if (_eat(NodeType.parenL)) {

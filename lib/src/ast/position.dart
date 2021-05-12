@@ -13,4 +13,14 @@ class Position {
       'character': character,
     };
   }
+
+  Position copy({int? character, int? line}) {
+    final currentCharacter = this.character;
+    final currentLine = this.line;
+
+    return Position(
+      line: line ?? currentLine,
+      character: character ?? currentCharacter,
+    );
+  }
 }
